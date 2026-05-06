@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280,initial-scale=1">
+<title>Kavak Chile — Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --kavak-blue:#0467FC;
+    --kavak-dark:#1B2532;
+    --kavak-darker:#0F1722;
+    --kavak-card:#212C3D;
+    --kavak-border:rgba(255,255,255,0.08);
+    --kavak-green:#00C48C;
+    --kavak-red:#FF4757;
+    --kavak-orange:#FF9F43;
+    --kavak-purple:#A55EEA;
+    --text:rgba(255,255,255,0.92);
+    --text-2:rgba(255,255,255,0.6);
+    --text-3:rgba(255,255,255,0.4);
+  }
+  * {margin:0;padding:0;box-sizing:border-box;}
+  body {
+    font-family:'Inter',-apple-system,sans-serif;
+    background:var(--kavak-dark);
+    color:var(--text);
+    font-size:13px;
+    min-height:100vh;
+  }
+  .topbar {
+    background:var(--kavak-darker);
+    border-bottom:1px solid var(--kavak-border);
+    padding:14px 28px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:100;
+  }
+  .brand {display:flex;align-items:center;gap:14px;}
+  .brand svg {width:64px;height:auto;fill:#fff;}
+  .brand h1 {font-size:15px;font-weight:700;letter-spacing:-0.2px;}
+  .brand .subtitle {font-size:11px;color:var(--text-3);}
+  .topbar-meta {display:flex;align-items:center;gap:18px;font-size:11px;color:var(--text-2);}
+  .topbar-meta strong {color:var(--text);font-weight:600;}
+
+  .tabs {
+    background:var(--kavak-darker);
+    border-bottom:1px solid var(--kavak-border);
+    display:flex;gap:2px;padding:0 28px;
+    position:sticky;top:55px;z-index:99;
+  }
+  .tab-btn {
+    background:transparent;border:none;color:var(--text-2);
+    padding:14px 22px;cursor:pointer;font-size:13px;font-weight:600;
+    border-bottom:2px solid transparent;transition:all 0.15s;
+    font-family:inherit;
+  }
+  .tab-btn:hover {color:var(--text);}
+  .tab-btn.active {color:var(--text);border-bottom-color:var(--kavak-blue);}
+
+  main {padding:28px;max-width:1600px;margin:0 auto;}
+  .tab-pane {display:none;}
+  .tab-pane.active {display:block;}
+
+  h2.section {font-size:18px;font-weight:700;margin:28px 0 14px;letter-spacing:-0.3px;}
+  h2.section:first-child {margin-top:0;}
+  h3.subsection {font-size:14px;font-weight:600;margin:20px 0 12px;color:var(--text-2);text-transform:uppercase;letter-spacing:0.5px;}
+
+  /* KPI cards */
+  .kpi-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
+  .kpi {
+    background:var(--kavak-card);
+    border:1px solid var(--kavak-border);
+    border-radius:10px;padding:14px 16px;
+  }
+  .kpi-label {font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+  .kpi-val {font-size:24px;font-weight:800;letter-spacing:-0.4px;line-height:1;}
+  .kpi-delta {font-size:11px;margin-top:6px;font-weight:600;}
+  .kpi-delta.up {color:var(--kavak-green);}
+  .kpi-delta.down {color:var(--kavak-red);}
+  .kpi-delta.flat {color:var(--text-3);}
+  .kpi-prev {font-size:10px;color:var(--text-3);margin-top:2px;}
+
+  /* Cards */
+  .card {
+    background:var(--kavak-card);
+    border:1px solid var(--kavak-border);
+    border-radius:10px;padding:18px;margin-bottom:16px;
+  }
+  .card h4 {font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);}
+  .card-grid {display:grid;gap:16px;margin-bottom:16px;}
+  .card-grid.cols-2 {grid-template-columns:1fr 1fr;}
+  .card-grid.cols-3 {grid-template-columns:1fr 1fr 1fr;}
+
+  /* Tables */
+  table {
+    width:100%;border-collapse:collapse;font-size:12px;
+    font-variant-numeric:tabular-nums;
+  }
+  th, td {
+    padding:8px 10px;text-align:right;border-bottom:1px solid var(--kavak-border);
+    white-space:nowrap;
+  }
+  th {
+    background:rgba(255,255,255,0.03);
+    color:var(--text-3);font-weight:600;font-size:10px;
+    text-transform:uppercase;letter-spacing:0.4px;cursor:pointer;
+    user-select:none;
+    position:sticky;top:0;z-index:1;
+  }
+  th:hover {color:var(--text);}
+  th .sort-arrow {opacity:0.3;margin-left:4px;}
+  th.sorted .sort-arrow {opacity:1;}
+  td.left, th.left {text-align:left;}
+  tr:hover td {background:rgba(255,255,255,0.02);}
+  td.name {max-width:280px;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+
+  .delta-cell {font-size:10px;font-weight:600;display:block;margin-top:2px;}
+  .delta-cell.up {color:var(--kavak-green);}
+  .delta-cell.down {color:var(--kavak-red);}
+
+  .table-wrap {overflow-x:auto;border-radius:8px;border:1px solid var(--kavak-border);max-height:600px;overflow-y:auto;}
+
+  /* Status pills */
+  .pill {display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;}
+  .pill.active {background:rgba(0,196,140,0.18);color:var(--kavak-green);}
+  .pill.paused {background:rgba(255,71,87,0.18);color:var(--kavak-red);}
+  .pill.low {background:rgba(255,159,67,0.18);color:var(--kavak-orange);}
+  .pill.new {background:rgba(4,103,252,0.18);color:var(--kavak-blue);}
+  .pill.meta {background:rgba(4,103,252,0.18);color:var(--kavak-blue);}
+  .pill.search {background:rgba(0,196,140,0.18);color:var(--kavak-green);}
+  .pill.pmax {background:rgba(255,159,67,0.18);color:var(--kavak-orange);}
+  .pill.dg {background:rgba(255,71,87,0.18);color:var(--kavak-red);}
+
+  /* Channel tag */
+  .ch-tag {font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;display:inline-block;}
+
+  /* Filters */
+  .filters {display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .filters input, .filters select {
+    background:var(--kavak-darker);border:1px solid var(--kavak-border);
+    color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px;
+    font-family:inherit;
+  }
+  .filters input:focus, .filters select:focus {outline:none;border-color:var(--kavak-blue);}
+  .filters .btn {
+    background:var(--kavak-blue);color:#fff;border:none;
+    padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;font-size:11px;
+  }
+  .filters .btn.ghost {background:rgba(255,255,255,0.05);color:var(--text-2);}
+
+  /* Sparkline */
+  .spark {display:inline-block;width:80px;height:20px;}
+
+  /* Charts */
+  .chart-box {position:relative;height:280px;}
+  .chart-box.tall {height:340px;}
+  .chart-box.short {height:200px;}
+
+  /* Quadrant labels */
+  .quadrant-label {position:absolute;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;opacity:0.5;}
+
+  /* Health score bar */
+  .health-bar {height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;width:100%;}
+  .health-fill {height:100%;border-radius:4px;}
+  .health-fill.green {background:var(--kavak-green);}
+  .health-fill.orange {background:var(--kavak-orange);}
+  .health-fill.red {background:var(--kavak-red);}
+
+  /* Movers list */
+  .movers-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+  .mover-block {background:rgba(255,255,255,0.02);border-radius:8px;padding:14px;border:1px solid var(--kavak-border);}
+  .mover-block h5 {font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-2);margin-bottom:10px;}
+  .mover-row {display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 0;border-bottom:1px dashed rgba(255,255,255,0.04);}
+  .mover-row:last-child {border-bottom:none;}
+  .mover-row .name {flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px;}
+  .mover-row .delta {font-weight:700;}
+
+  /* Footer */
+  footer {padding:24px 28px;color:var(--text-3);font-size:11px;text-align:center;border-top:1px solid var(--kavak-border);margin-top:40px;}
+
+  .empty-state {padding:40px;text-align:center;color:var(--text-3);font-size:13px;}
+
+  /* Watermark on every section */
+  .watermark {opacity:0.06;position:fixed;bottom:14px;right:18px;width:48px;pointer-events:none;}
+  .watermark svg {width:100%;fill:#fff;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 7774 2048"><path d="M7296.82.052L6752.798 1024l544.022 1023.948h477.424L7239.034 1024 7774.244.052zm-1130.746 0v1705.534L5275.298.052 4205.476 2047.954h470.514l599.916-1147.71 254.406 487.47h-254.406l-178.412 341.108h611.236l166.464 319.132h726.816V.052h-435.96zm-1767.734 0l-599.916 1147.71L3199.138.052h-470.514l1069.822 2047.902L4868.268.052H4398.39zm-2076.172 0l-892.04 1707.424L1072.7 1024 1607.91.052h-477.424L586.464 1024l544.022 1023.948h593.006l166.464-319.132h611.236l-178.412-341.108h-254.406l254.406-487.47 598.678 1147.71h470.514L2322.15.046zM-.244 2047.952h435.33V.05H-.244z"/></svg>
+    <div>
+      <h1>Chile Performance Dashboard</h1>
+      <div class="subtitle">Sales · Purchase · BrandKwd · Online Branding</div>
+    </div>
+  </div>
+  <div class="topbar-meta">
+    <span><strong>Updated:</strong> 2026-05-06 13:10</span>
+    <span><strong>WoW:</strong> 2026-04-27 → 2026-05-03 vs 2026-04-20 → 2026-04-26</span>
+    <span><strong>Trend:</strong> 2026-04-06 → 2026-05-05</span>
+  </div>
+</div>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  
+  <button class="tab-btn" data-tab="Sales">Sales</button>
+  
+  <button class="tab-btn" data-tab="Purchase">Purchase</button>
+  
+  <button class="tab-btn" data-tab="BrandKwd">BrandKwd</button>
+  
+  <button class="tab-btn" data-tab="Online Branding">Online Branding</button>
+  
+</nav>
+
+<main>
+
+<!-- ───────────── Overview Tab ───────────── -->
+<section class="tab-pane active" id="tab-overview">
+  <h2 class="section">Resumen ejecutivo · Esta semana (2026-04-27 → 2026-05-03)</h2>
+
+  <div class="kpi-grid">
+    
+    
+    <div class="kpi">
+      <div class="kpi-label">Sales — Spend</div>
+      <div class="kpi-val">$0</div>
+      
+      <div class="kpi-delta flat">
+        +0.0% WoW
+      </div>
+      
+      <div class="kpi-prev">0 campañas · prev $0</div>
+    </div>
+    
+    
+    <div class="kpi">
+      <div class="kpi-label">Purchase — Spend</div>
+      <div class="kpi-val">$0</div>
+      
+      <div class="kpi-delta flat">
+        +0.0% WoW
+      </div>
+      
+      <div class="kpi-prev">0 campañas · prev $0</div>
+    </div>
+    
+    
+    <div class="kpi">
+      <div class="kpi-label">BrandKwd — Spend</div>
+      <div class="kpi-val">$0</div>
+      
+      <div class="kpi-delta flat">
+        +0.0% WoW
+      </div>
+      
+      <div class="kpi-prev">0 campañas · prev $0</div>
+    </div>
+    
+    
+    <div class="kpi">
+      <div class="kpi-label">Online Branding — Spend</div>
+      <div class="kpi-val">$74</div>
+      
+      <div class="kpi-delta down">
+        -78.8% WoW
+      </div>
+      
+      <div class="kpi-prev">4 campañas · prev $349</div>
+    </div>
+    
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend por Vertical</h4>
+      <div class="chart-box short"><canvas id="ov-spend-vertical"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Spend por Canal × Vertical (esta semana)</h4>
+      <div class="chart-box short"><canvas id="ov-spend-channel"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h4>Quick health WoW · todas las verticales</h4>
+    <div class="table-wrap">
+      <table id="ov-table">
+        <thead><tr>
+          <th class="left">Vertical</th>
+          <th>Spend</th><th>Δ%</th>
+          <th>Volume metric</th>
+          <th>Δ%</th>
+          <th>Cost metric</th>
+          <th>Δ%</th>
+          <th>Campañas activas</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── Vertical tabs (Sales / Purchase / BrandKwd / Online Branding) ───────────── -->
+
+<section class="tab-pane" id="tab-Sales">
+  <h2 class="section">Sales · Performance overview</h2>
+
+  <!-- A. KPI Cards -->
+  <div class="kpi-grid" id="kpi-Sales"></div>
+
+  <!-- B. Spend Distribution -->
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend por canal</h4>
+      <div class="chart-box short"><canvas id="spend-donut-Sales"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Top 10 campañas por spend</h4>
+      <div class="chart-box short"><canvas id="top-spend-Sales"></canvas></div>
+    </div>
+  </div>
+
+  <!-- C. Channel Table -->
+  <div class="card">
+    <h4>Performance por canal · WoW</h4>
+    <div class="table-wrap"><table id="ch-table-Sales"></table></div>
+  </div>
+
+  <!-- D. Daily Trend -->
+  <h3 class="subsection">Daily trend · 30 días</h3>
+  <div class="card-grid cols-2" id="daily-grid-Sales"></div>
+
+  <!-- E. Spend vs Resultados -->
+  
+  <h3 class="subsection">Spend vs resultados</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend vs Leads (campañas)</h4>
+      <div class="chart-box"><canvas id="scatter-Sales"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Spend diario vs resultados</h4>
+      <div class="chart-box"><canvas id="dual-axis-Sales"></canvas></div>
+    </div>
+  </div>
+  
+
+  <!-- F. Funnel -->
+  
+  <div class="card">
+    <h4>Funnel de conversión · esta semana</h4>
+    <div id="funnel-Sales"></div>
+  </div>
+  
+
+  <!-- ============ CAMPAIGN DEEP DIVE (8 blocks) ============ -->
+  <h2 class="section" style="margin-top:36px;color:var(--kavak-blue);">▾ Campaign Deep Dive</h2>
+
+  <!-- 1. Master Campaign Table -->
+  <div class="card">
+    <h4>Master Campaign Table · sortable + filtrable</h4>
+    <div class="filters">
+      <input type="text" placeholder="Buscar campaña..." id="search-Sales">
+      <select id="ch-filter-Sales">
+        <option value="">Todos los canales</option>
+        <option value="Meta">Meta</option><option value="Search">Search</option><option value="Performance Max">Performance Max</option><option value="Demand Gen">Demand Gen</option>
+      </select>
+      <select id="status-filter-Sales">
+        <option value="">Todos los status</option>
+        <option value="Active">Active</option>
+        <option value="Low spend">Low spend</option>
+        <option value="Paused">Paused</option>
+        <option value="New">New</option>
+      </select>
+      <button class="btn ghost" onclick="exportCSV('master-Sales', 'campaigns_Sales')">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="master-Sales"></table></div>
+  </div>
+
+  <!-- 3. Quadrant Analysis -->
+  
+  <div class="card">
+    <h4>Quadrant Analysis · Volumen × Eficiencia</h4>
+    <p style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+      X = Leads · Y = CPL (invertido — más bajo = mejor) ·
+      Tamaño = Spend · Color = Canal
+    </p>
+    <div class="chart-box tall"><canvas id="quad-Sales"></canvas></div>
+  </div>
+  
+
+  <!-- 4. Top / Bottom Performers + 5. Movers -->
+  
+  <div class="card">
+    <h4>Top / Bottom performers + WoW movers</h4>
+    <div class="movers-grid" id="movers-Sales"></div>
+  </div>
+  
+
+  <!-- 7. Spend Share Evolution -->
+  <div class="card">
+    <h4>Spend share evolution · 30 días (top 10 campañas)</h4>
+    <div class="chart-box tall"><canvas id="share-Sales"></canvas></div>
+  </div>
+
+  <!-- 8. Campaign Health Score -->
+  
+  <div class="card">
+    <h4>Campaign Health Score</h4>
+    <p style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+      Score 0–100 = 40% Eficiencia · 30% Volumen · 20% Conversión · 10% Tendencia
+    </p>
+    <div class="table-wrap"><table id="health-Sales"></table></div>
+  </div>
+  
+</section>
+
+<section class="tab-pane" id="tab-Purchase">
+  <h2 class="section">Purchase · Performance overview</h2>
+
+  <!-- A. KPI Cards -->
+  <div class="kpi-grid" id="kpi-Purchase"></div>
+
+  <!-- B. Spend Distribution -->
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend por canal</h4>
+      <div class="chart-box short"><canvas id="spend-donut-Purchase"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Top 10 campañas por spend</h4>
+      <div class="chart-box short"><canvas id="top-spend-Purchase"></canvas></div>
+    </div>
+  </div>
+
+  <!-- C. Channel Table -->
+  <div class="card">
+    <h4>Performance por canal · WoW</h4>
+    <div class="table-wrap"><table id="ch-table-Purchase"></table></div>
+  </div>
+
+  <!-- D. Daily Trend -->
+  <h3 class="subsection">Daily trend · 30 días</h3>
+  <div class="card-grid cols-2" id="daily-grid-Purchase"></div>
+
+  <!-- E. Spend vs Resultados -->
+  
+  <h3 class="subsection">Spend vs resultados</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend vs Registros (campañas)</h4>
+      <div class="chart-box"><canvas id="scatter-Purchase"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Spend diario vs resultados</h4>
+      <div class="chart-box"><canvas id="dual-axis-Purchase"></canvas></div>
+    </div>
+  </div>
+  
+
+  <!-- F. Funnel -->
+  
+  <div class="card">
+    <h4>Funnel de conversión · esta semana</h4>
+    <div id="funnel-Purchase"></div>
+  </div>
+  
+
+  <!-- ============ CAMPAIGN DEEP DIVE (8 blocks) ============ -->
+  <h2 class="section" style="margin-top:36px;color:var(--kavak-blue);">▾ Campaign Deep Dive</h2>
+
+  <!-- 1. Master Campaign Table -->
+  <div class="card">
+    <h4>Master Campaign Table · sortable + filtrable</h4>
+    <div class="filters">
+      <input type="text" placeholder="Buscar campaña..." id="search-Purchase">
+      <select id="ch-filter-Purchase">
+        <option value="">Todos los canales</option>
+        <option value="Meta">Meta</option><option value="Search">Search</option><option value="Performance Max">Performance Max</option><option value="Demand Gen">Demand Gen</option>
+      </select>
+      <select id="status-filter-Purchase">
+        <option value="">Todos los status</option>
+        <option value="Active">Active</option>
+        <option value="Low spend">Low spend</option>
+        <option value="Paused">Paused</option>
+        <option value="New">New</option>
+      </select>
+      <button class="btn ghost" onclick="exportCSV('master-Purchase', 'campaigns_Purchase')">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="master-Purchase"></table></div>
+  </div>
+
+  <!-- 3. Quadrant Analysis -->
+  
+  <div class="card">
+    <h4>Quadrant Analysis · Volumen × Eficiencia</h4>
+    <p style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+      X = Registros · Y = CPR (invertido — más bajo = mejor) ·
+      Tamaño = Spend · Color = Canal
+    </p>
+    <div class="chart-box tall"><canvas id="quad-Purchase"></canvas></div>
+  </div>
+  
+
+  <!-- 4. Top / Bottom Performers + 5. Movers -->
+  
+  <div class="card">
+    <h4>Top / Bottom performers + WoW movers</h4>
+    <div class="movers-grid" id="movers-Purchase"></div>
+  </div>
+  
+
+  <!-- 7. Spend Share Evolution -->
+  <div class="card">
+    <h4>Spend share evolution · 30 días (top 10 campañas)</h4>
+    <div class="chart-box tall"><canvas id="share-Purchase"></canvas></div>
+  </div>
+
+  <!-- 8. Campaign Health Score -->
+  
+  <div class="card">
+    <h4>Campaign Health Score</h4>
+    <p style="font-size:11px;color:var(--text-3);margin-bottom:12px;">
+      Score 0–100 = 40% Eficiencia · 30% Volumen · 20% Conversión · 10% Tendencia
+    </p>
+    <div class="table-wrap"><table id="health-Purchase"></table></div>
+  </div>
+  
+</section>
+
+<section class="tab-pane" id="tab-BrandKwd">
+  <h2 class="section">BrandKwd · Performance overview</h2>
+
+  <!-- A. KPI Cards -->
+  <div class="kpi-grid" id="kpi-BrandKwd"></div>
+
+  <!-- B. Spend Distribution -->
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend por canal</h4>
+      <div class="chart-box short"><canvas id="spend-donut-BrandKwd"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Top 10 campañas por spend</h4>
+      <div class="chart-box short"><canvas id="top-spend-BrandKwd"></canvas></div>
+    </div>
+  </div>
+
+  <!-- C. Channel Table -->
+  <div class="card">
+    <h4>Performance por canal · WoW</h4>
+    <div class="table-wrap"><table id="ch-table-BrandKwd"></table></div>
+  </div>
+
+  <!-- D. Daily Trend -->
+  <h3 class="subsection">Daily trend · 30 días</h3>
+  <div class="card-grid cols-2" id="daily-grid-BrandKwd"></div>
+
+  <!-- E. Spend vs Resultados -->
+  
+
+  <!-- F. Funnel -->
+  
+
+  <!-- ============ CAMPAIGN DEEP DIVE (8 blocks) ============ -->
+  <h2 class="section" style="margin-top:36px;color:var(--kavak-blue);">▾ Campaign Deep Dive</h2>
+
+  <!-- 1. Master Campaign Table -->
+  <div class="card">
+    <h4>Master Campaign Table · sortable + filtrable</h4>
+    <div class="filters">
+      <input type="text" placeholder="Buscar campaña..." id="search-BrandKwd">
+      <select id="ch-filter-BrandKwd">
+        <option value="">Todos los canales</option>
+        <option value="Meta">Meta</option><option value="Search">Search</option><option value="Performance Max">Performance Max</option><option value="Demand Gen">Demand Gen</option>
+      </select>
+      <select id="status-filter-BrandKwd">
+        <option value="">Todos los status</option>
+        <option value="Active">Active</option>
+        <option value="Low spend">Low spend</option>
+        <option value="Paused">Paused</option>
+        <option value="New">New</option>
+      </select>
+      <button class="btn ghost" onclick="exportCSV('master-BrandKwd', 'campaigns_BrandKwd')">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="master-BrandKwd"></table></div>
+  </div>
+
+  <!-- 3. Quadrant Analysis -->
+  
+
+  <!-- 4. Top / Bottom Performers + 5. Movers -->
+  
+
+  <!-- 7. Spend Share Evolution -->
+  <div class="card">
+    <h4>Spend share evolution · 30 días (top 10 campañas)</h4>
+    <div class="chart-box tall"><canvas id="share-BrandKwd"></canvas></div>
+  </div>
+
+  <!-- 8. Campaign Health Score -->
+  
+</section>
+
+<section class="tab-pane" id="tab-Online Branding">
+  <h2 class="section">Online Branding · Performance overview</h2>
+
+  <!-- A. KPI Cards -->
+  <div class="kpi-grid" id="kpi-Online Branding"></div>
+
+  <!-- B. Spend Distribution -->
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Spend por canal</h4>
+      <div class="chart-box short"><canvas id="spend-donut-Online Branding"></canvas></div>
+    </div>
+    <div class="card">
+      <h4>Top 10 campañas por spend</h4>
+      <div class="chart-box short"><canvas id="top-spend-Online Branding"></canvas></div>
+    </div>
+  </div>
+
+  <!-- C. Channel Table -->
+  <div class="card">
+    <h4>Performance por canal · WoW</h4>
+    <div class="table-wrap"><table id="ch-table-Online Branding"></table></div>
+  </div>
+
+  <!-- D. Daily Trend -->
+  <h3 class="subsection">Daily trend · 30 días</h3>
+  <div class="card-grid cols-2" id="daily-grid-Online Branding"></div>
+
+  <!-- E. Spend vs Resultados -->
+  
+
+  <!-- F. Funnel -->
+  
+
+  <!-- ============ CAMPAIGN DEEP DIVE (8 blocks) ============ -->
+  <h2 class="section" style="margin-top:36px;color:var(--kavak-blue);">▾ Campaign Deep Dive</h2>
+
+  <!-- 1. Master Campaign Table -->
+  <div class="card">
+    <h4>Master Campaign Table · sortable + filtrable</h4>
+    <div class="filters">
+      <input type="text" placeholder="Buscar campaña..." id="search-Online Branding">
+      <select id="ch-filter-Online Branding">
+        <option value="">Todos los canales</option>
+        <option value="Meta">Meta</option><option value="Search">Search</option><option value="Performance Max">Performance Max</option><option value="Demand Gen">Demand Gen</option>
+      </select>
+      <select id="status-filter-Online Branding">
+        <option value="">Todos los status</option>
+        <option value="Active">Active</option>
+        <option value="Low spend">Low spend</option>
+        <option value="Paused">Paused</option>
+        <option value="New">New</option>
+      </select>
+      <button class="btn ghost" onclick="exportCSV('master-Online Branding', 'campaigns_Online Branding')">Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="master-Online Branding"></table></div>
+  </div>
+
+  <!-- 3. Quadrant Analysis -->
+  
+
+  <!-- 4. Top / Bottom Performers + 5. Movers -->
+  
+
+  <!-- 7. Spend Share Evolution -->
+  <div class="card">
+    <h4>Spend share evolution · 30 días (top 10 campañas)</h4>
+    <div class="chart-box tall"><canvas id="share-Online Branding"></canvas></div>
+  </div>
+
+  <!-- 8. Campaign Health Score -->
+  
+</section>
+
+
+<footer>
+  Kavak · Chile Performance Dashboard · auto-generated · WoW = lun-dom cerrado
+</footer>
+
+<div class="watermark">
+  <svg viewBox="0 0 7774 2048"><path d="M7296.82.052L6752.798 1024l544.022 1023.948h477.424L7239.034 1024 7774.244.052zm-1130.746 0v1705.534L5275.298.052 4205.476 2047.954h470.514l599.916-1147.71 254.406 487.47h-254.406l-178.412 341.108h611.236l166.464 319.132h726.816V.052h-435.96zm-1767.734 0l-599.916 1147.71L3199.138.052h-470.514l1069.822 2047.902L4868.268.052H4398.39zm-2076.172 0l-892.04 1707.424L1072.7 1024 1607.91.052h-477.424L586.464 1024l544.022 1023.948h593.006l166.464-319.132h611.236l-178.412-341.108h-254.406l254.406-487.47 598.678 1147.71h470.514L2322.15.046zM-.244 2047.952h435.33V.05H-.244z"/></svg>
+</div>
+
+</main>
+
+<script>
+const DATA = {"meta": {"updated": "2026-05-06 13:10", "this_week": "2026-04-27 \u2192 2026-05-03", "prev_week": "2026-04-20 \u2192 2026-04-26", "daily_range": "2026-04-06 \u2192 2026-05-05"}, "verticals": {"Sales": {"kpis": {"impressions": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "clicks": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "spend": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vips": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "leads": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "qls": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "bookings": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "registers": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "online_schedule": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "ctr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpc": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpm": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpl": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpql": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpb": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpv": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpos": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_vip": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vip_to_lead": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "lead_to_booking": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_register": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "register_to_os": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}}, "channel_rows": [], "channel_spend": {"Meta": 0.0, "Search": 0.0, "Performance Max": 0.0, "Demand Gen": 0.0}, "daily_series": {}, "campaigns": [], "movers": {"volume_metric": "leads", "cost_metric": "cpl", "gainers": [], "losers": [], "eff_up": [], "eff_down": [], "new": [], "paused": []}, "median_cost": 0, "median_vol": 0}, "Purchase": {"kpis": {"impressions": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "clicks": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "spend": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vips": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "leads": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "qls": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "bookings": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "registers": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "online_schedule": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "ctr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpc": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpm": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpl": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpql": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpb": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpv": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpos": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_vip": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vip_to_lead": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "lead_to_booking": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_register": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "register_to_os": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}}, "channel_rows": [], "channel_spend": {"Meta": 0.0, "Search": 0.0, "Performance Max": 0.0, "Demand Gen": 0.0}, "daily_series": {}, "campaigns": [], "movers": {"volume_metric": "registers", "cost_metric": "cpr", "gainers": [], "losers": [], "eff_up": [], "eff_down": [], "new": [], "paused": []}, "median_cost": 0, "median_vol": 0}, "BrandKwd": {"kpis": {"impressions": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "clicks": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "spend": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vips": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "leads": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "qls": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "bookings": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "registers": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "online_schedule": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "ctr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpc": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpm": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpl": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpql": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpb": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpv": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpos": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_vip": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "vip_to_lead": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "lead_to_booking": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_register": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "register_to_os": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}}, "channel_rows": [], "channel_spend": {"Meta": 0.0, "Search": 0.0, "Performance Max": 0.0, "Demand Gen": 0.0}, "daily_series": {}, "campaigns": [], "movers": {"volume_metric": "clicks", "cost_metric": "cpc", "gainers": [], "losers": [], "eff_up": [], "eff_down": [], "new": [], "paused": []}}, "Online Branding": {"kpis": {"impressions": {"curr": 120326.0, "prev": 865845.0, "abs": -745519.0, "pct": -86.10305539675115}, "clicks": {"curr": 1935.0, "prev": 6825.0, "abs": -4890.0, "pct": -71.64835164835165}, "spend": {"curr": 73.75, "prev": 348.59999999999997, "abs": -274.84999999999997, "pct": -78.84394721744118}, "vips": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "leads": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "qls": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "bookings": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "registers": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "online_schedule": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "ctr": {"curr": 1.6081312434552797, "prev": 0.7882473190929093, "abs": 0.8198839243623703, "pct": 104.01353794718482}, "cpc": {"curr": 0.03811369509043928, "prev": 0.051076923076923075, "abs": -0.012963227986483798, "pct": -25.379813828959247}, "cpm": {"curr": 0.612918238784635, "prev": 0.4026124768289936, "abs": 0.21030576195564143, "pct": 52.235281830316225}, "cpl": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpql": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpb": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpv": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpr": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "cpos": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_vip": {"curr": 0.0, "prev": 0.0, "abs": 0, "pct": 0}, "vip_to_lead": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "lead_to_booking": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}, "click_to_register": {"curr": 0.0, "prev": 0.0, "abs": 0, "pct": 0}, "register_to_os": {"curr": 0, "prev": 0, "abs": 0, "pct": 0}}, "channel_rows": [{"channel": "Meta", "curr": {"impressions": 120326.0, "clicks": 1935.0, "spend": 73.75, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.6081312434552797, "cpc": 0.03811369509043928, "cpm": 0.612918238784635, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 865845.0, "clicks": 6825.0, "spend": 348.59999999999997, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.7882473190929093, "cpc": 0.051076923076923075, "cpm": 0.4026124768289936, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -745519.0, "pct": -86.10305539675115}, "clicks": {"abs": -4890.0, "pct": -71.64835164835165}, "spend": {"abs": -274.84999999999997, "pct": -78.84394721744118}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": 0.8198839243623703, "pct": 104.01353794718482}, "cpc": {"abs": -0.012963227986483798, "pct": -25.379813828959247}, "cpm": {"abs": 0.21030576195564143, "pct": 52.235281830316225}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}}], "channel_spend": {"Meta": 73.75, "Search": 0.0, "Performance Max": 0.0, "Demand Gen": 0.0}, "daily_series": {"Meta": {"dates": ["2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05"], "spend": [280.94, 279.23, 308.24, 386.83, 339.16, 340.8, 396.66, 351.63, 209.71, 126.88, 131.83, 130.58, 149.2, 142.43, 69.31, 59.04, 46.14, 39.58, 41.99, 46.95, 45.59, 24.69, 21.57, 22.7, 4.79, 0.0, 0.0, 0.0, 0.0, 0.0], "leads": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "qls": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bookings": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "vips": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "registers": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "online_schedule": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "clicks": [2520, 2371, 3476, 5676, 4298, 3323, 5457, 4642, 3005, 1888, 2036, 1993, 2397, 2292, 1156, 1105, 823, 853, 896, 1023, 969, 619, 617, 577, 122, 0, 0, 0, 0, 0], "impressions": [681172, 592770, 610297, 730546, 620274, 603598, 868508, 735849, 456463, 269005, 280280, 278098, 331376, 341757, 117396, 133907, 109725, 152788, 104204, 129867, 117958, 44318, 48976, 22170, 4862, 0, 0, 0, 0, 0]}, "Search": {"dates": ["2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05"], "spend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "leads": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "qls": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bookings": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "vips": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "registers": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "online_schedule": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "clicks": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "impressions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "Performance Max": {"dates": ["2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05"], "spend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "leads": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "qls": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bookings": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "vips": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "registers": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "online_schedule": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "clicks": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "impressions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "Demand Gen": {"dates": ["2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05"], "spend": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "leads": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "qls": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bookings": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "vips": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "registers": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "online_schedule": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "clicks": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "impressions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "Total": {"dates": ["2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05"], "spend": [280.94, 279.23, 308.24, 386.83, 339.16, 340.8, 396.66, 351.63, 209.71, 126.88, 131.83, 130.58, 149.2, 142.43, 69.31, 59.04, 46.14, 39.58, 41.99, 46.95, 45.59, 24.69, 21.57, 22.7, 4.79, 0.0, 0.0, 0.0, 0.0, 0.0], "leads": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "qls": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "bookings": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "vips": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "registers": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "online_schedule": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "clicks": [2520, 2371, 3476, 5676, 4298, 3323, 5457, 4642, 3005, 1888, 2036, 1993, 2397, 2292, 1156, 1105, 823, 853, 896, 1023, 969, 619, 617, 577, 122, 0, 0, 0, 0, 0], "impressions": [681172, 592770, 610297, 730546, 620274, 603598, 868508, 735849, 456463, 269005, 280280, 278098, 331376, 341757, 117396, 133907, 109725, 152788, 104204, 129867, 117958, 44318, 48976, 22170, 4862, 0, 0, 0, 0, 0]}}, "campaigns": [{"name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Active", "days_active_30": 23, "curr": {"impressions": 114275.0, "clicks": 1914.0, "spend": 70.37, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.6749070225333624, "cpc": 0.03676593521421108, "cpm": 0.6157952308028878, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 581989.0, "clicks": 5878.0, "spend": 214.03, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.009984724797204, "cpc": 0.0364120449132358, "cpm": 0.3677560916099789, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -467714.0, "pct": -80.36474916192574}, "clicks": {"abs": -3964.0, "pct": -67.43790404899626}, "spend": {"abs": -143.66, "pct": -67.12143157501285}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": 0.6649222977361584, "pct": 65.83488654936528}, "cpc": {"abs": 0.00035389030097528196, "pct": 0.9719044942917849}, "cpm": {"abs": 0.24803913919290888, "pct": 67.44664326484224}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [0.0, 0.0, 53.71, 107.65, 66.88, 39.88, 81.02, 75.21, 54.4, 49.97, 52.63, 54.07, 64.84, 55.88, 36.33, 35.96, 24.19, 26.58, 28.76, 32.81, 29.4, 21.31, 21.57, 22.7, 4.79, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Low spend", "days_active_30": 22, "curr": {"impressions": 6051.0, "clicks": 21.0, "spend": 3.38, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.34705007436787305, "cpc": 0.16095238095238096, "cpm": 0.5585853577921004, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 255765.0, "clicks": 912.0, "spend": 128.3, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.3565773268430004, "cpc": 0.14067982456140352, "cpm": 0.5016323578284754, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -249714.0, "pct": -97.63415635446601}, "clicks": {"abs": -891.0, "pct": -97.69736842105263}, "spend": {"abs": -124.92000000000002, "pct": -97.3655494933749}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.009527252475127368, "pct": -2.6718615452861307}, "cpc": {"abs": 0.020272556390977442, "pct": 14.41042200200423}, "cpm": {"abs": 0.05695299996362502, "pct": 11.353533932733088}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [155.68, 169.64, 154.01, 180.75, 174.0, 196.8, 194.99, 163.7, 92.33, 39.81, 41.31, 37.86, 44.17, 43.08, 26.71, 23.08, 21.95, 13.0, 13.23, 14.14, 16.19, 3.38, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 12095.0, "clicks": 15.0, "spend": 3.53, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12401818933443572, "cpc": 0.2353333333333333, "cpm": 0.29185613890037204, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -12095.0, "pct": -100.0}, "clicks": {"abs": -15.0, "pct": -100.0}, "spend": {"abs": -3.53, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12401818933443572, "pct": -100.0}, "cpc": {"abs": -0.2353333333333333, "pct": -100.0}, "cpm": {"abs": -0.29185613890037204, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [64.31, 50.72, 49.16, 50.99, 51.1, 54.95, 58.94, 57.99, 36.68, 18.74, 18.69, 19.28, 20.19, 21.56, 3.53, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "short_name": "brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 15996.0, "clicks": 20.0, "spend": 2.74, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12503125781445362, "cpc": 0.137, "cpm": 0.17129282320580147, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -15996.0, "pct": -100.0}, "clicks": {"abs": -20.0, "pct": -100.0}, "spend": {"abs": -2.74, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12503125781445362, "pct": -100.0}, "cpc": {"abs": -0.137, "pct": -100.0}, "cpm": {"abs": -0.17129282320580147, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [60.95, 58.87, 51.36, 47.44, 47.18, 49.17, 61.71, 54.73, 26.3, 18.36, 19.2, 19.37, 20.0, 21.91, 2.74, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}], "movers": {"volume_metric": "clicks", "cost_metric": "cpc", "gainers": [], "losers": [{"c": {"name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Active", "days_active_30": 23, "curr": {"impressions": 114275.0, "clicks": 1914.0, "spend": 70.37, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.6749070225333624, "cpc": 0.03676593521421108, "cpm": 0.6157952308028878, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 581989.0, "clicks": 5878.0, "spend": 214.03, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.009984724797204, "cpc": 0.0364120449132358, "cpm": 0.3677560916099789, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -467714.0, "pct": -80.36474916192574}, "clicks": {"abs": -3964.0, "pct": -67.43790404899626}, "spend": {"abs": -143.66, "pct": -67.12143157501285}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": 0.6649222977361584, "pct": 65.83488654936528}, "cpc": {"abs": 0.00035389030097528196, "pct": 0.9719044942917849}, "cpm": {"abs": 0.24803913919290888, "pct": 67.44664326484224}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [0.0, 0.0, 53.71, 107.65, 66.88, 39.88, 81.02, 75.21, 54.4, 49.97, 52.63, 54.07, 64.84, 55.88, 36.33, 35.96, 24.19, 26.58, 28.76, 32.81, 29.4, 21.31, 21.57, 22.7, 4.79, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": -3964.0, "pct": -67.43790404899626}}, {"c": {"name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Low spend", "days_active_30": 22, "curr": {"impressions": 6051.0, "clicks": 21.0, "spend": 3.38, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.34705007436787305, "cpc": 0.16095238095238096, "cpm": 0.5585853577921004, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 255765.0, "clicks": 912.0, "spend": 128.3, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.3565773268430004, "cpc": 0.14067982456140352, "cpm": 0.5016323578284754, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -249714.0, "pct": -97.63415635446601}, "clicks": {"abs": -891.0, "pct": -97.69736842105263}, "spend": {"abs": -124.92000000000002, "pct": -97.3655494933749}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.009527252475127368, "pct": -2.6718615452861307}, "cpc": {"abs": 0.020272556390977442, "pct": 14.41042200200423}, "cpm": {"abs": 0.05695299996362502, "pct": 11.353533932733088}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [155.68, 169.64, 154.01, 180.75, 174.0, 196.8, 194.99, 163.7, 92.33, 39.81, 41.31, 37.86, 44.17, 43.08, 26.71, 23.08, 21.95, 13.0, 13.23, 14.14, 16.19, 3.38, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": -891.0, "pct": -97.69736842105263}}, {"c": {"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "short_name": "brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 15996.0, "clicks": 20.0, "spend": 2.74, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12503125781445362, "cpc": 0.137, "cpm": 0.17129282320580147, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -15996.0, "pct": -100.0}, "clicks": {"abs": -20.0, "pct": -100.0}, "spend": {"abs": -2.74, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12503125781445362, "pct": -100.0}, "cpc": {"abs": -0.137, "pct": -100.0}, "cpm": {"abs": -0.17129282320580147, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [60.95, 58.87, 51.36, 47.44, 47.18, 49.17, 61.71, 54.73, 26.3, 18.36, 19.2, 19.37, 20.0, 21.91, 2.74, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": -20.0, "pct": -100.0}}, {"c": {"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 12095.0, "clicks": 15.0, "spend": 3.53, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12401818933443572, "cpc": 0.2353333333333333, "cpm": 0.29185613890037204, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -12095.0, "pct": -100.0}, "clicks": {"abs": -15.0, "pct": -100.0}, "spend": {"abs": -3.53, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12401818933443572, "pct": -100.0}, "cpc": {"abs": -0.2353333333333333, "pct": -100.0}, "cpm": {"abs": -0.29185613890037204, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [64.31, 50.72, 49.16, 50.99, 51.1, 54.95, 58.94, 57.99, 36.68, 18.74, 18.69, 19.28, 20.19, 21.56, 3.53, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": -15.0, "pct": -100.0}}], "eff_up": [], "eff_down": [{"c": {"name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-consideration-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Low spend", "days_active_30": 22, "curr": {"impressions": 6051.0, "clicks": 21.0, "spend": 3.38, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.34705007436787305, "cpc": 0.16095238095238096, "cpm": 0.5585853577921004, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 255765.0, "clicks": 912.0, "spend": 128.3, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.3565773268430004, "cpc": 0.14067982456140352, "cpm": 0.5016323578284754, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -249714.0, "pct": -97.63415635446601}, "clicks": {"abs": -891.0, "pct": -97.69736842105263}, "spend": {"abs": -124.92000000000002, "pct": -97.3655494933749}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.009527252475127368, "pct": -2.6718615452861307}, "cpc": {"abs": 0.020272556390977442, "pct": 14.41042200200423}, "cpm": {"abs": 0.05695299996362502, "pct": 11.353533932733088}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [155.68, 169.64, 154.01, 180.75, 174.0, 196.8, 194.99, 163.7, 92.33, 39.81, 41.31, 37.86, 44.17, 43.08, 26.71, 23.08, 21.95, 13.0, 13.23, 14.14, 16.19, 3.38, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": 0.020272556390977442, "pct": 14.41042200200423}}, {"c": {"name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-traffic-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Active", "days_active_30": 23, "curr": {"impressions": 114275.0, "clicks": 1914.0, "spend": 70.37, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.6749070225333624, "cpc": 0.03676593521421108, "cpm": 0.6157952308028878, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "prev": {"impressions": 581989.0, "clicks": 5878.0, "spend": 214.03, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 1.009984724797204, "cpc": 0.0364120449132358, "cpm": 0.3677560916099789, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -467714.0, "pct": -80.36474916192574}, "clicks": {"abs": -3964.0, "pct": -67.43790404899626}, "spend": {"abs": -143.66, "pct": -67.12143157501285}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": 0.6649222977361584, "pct": 65.83488654936528}, "cpc": {"abs": 0.00035389030097528196, "pct": 0.9719044942917849}, "cpm": {"abs": 0.24803913919290888, "pct": 67.44664326484224}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [0.0, 0.0, 53.71, 107.65, 66.88, 39.88, 81.02, 75.21, 54.4, 49.97, 52.63, 54.07, 64.84, 55.88, 36.33, 35.96, 24.19, 26.58, 28.76, 32.81, 29.4, 21.31, 21.57, 22.7, 4.79, 0.0, 0.0, 0.0, 0.0, 0.0]}, "d": {"abs": 0.00035389030097528196, "pct": 0.9719044942917849}}], "new": [], "paused": [{"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "short_name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 12095.0, "clicks": 15.0, "spend": 3.53, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12401818933443572, "cpc": 0.2353333333333333, "cpm": 0.29185613890037204, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -12095.0, "pct": -100.0}, "clicks": {"abs": -15.0, "pct": -100.0}, "spend": {"abs": -3.53, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12401818933443572, "pct": -100.0}, "cpc": {"abs": -0.2353333333333333, "pct": -100.0}, "cpm": {"abs": -0.29185613890037204, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [64.31, 50.72, 49.16, 50.99, 51.1, 54.95, 58.94, 57.99, 36.68, 18.74, 18.69, 19.28, 20.19, 21.56, 3.53, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"name": "cl-scl-brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "short_name": "brand-awareness-broad-facebook-es-top-eek-mar_26_2seconds", "channel": "Meta", "status": "Paused", "days_active_30": 15, "curr": {"impressions": 0, "clicks": 0, "spend": 0, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0, "cpc": 0, "cpm": 0, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0, "register_to_os": 0}, "prev": {"impressions": 15996.0, "clicks": 20.0, "spend": 2.74, "vips": 0, "leads": 0, "qls": 0, "bookings": 0, "registers": 0, "online_schedule": 0, "ctr": 0.12503125781445362, "cpc": 0.137, "cpm": 0.17129282320580147, "cpl": 0, "cpql": 0, "cpb": 0, "cpv": 0, "cpr": 0, "cpos": 0, "click_to_vip": 0.0, "vip_to_lead": 0, "lead_to_booking": 0, "click_to_register": 0.0, "register_to_os": 0}, "delta": {"impressions": {"abs": -15996.0, "pct": -100.0}, "clicks": {"abs": -20.0, "pct": -100.0}, "spend": {"abs": -2.74, "pct": -100.0}, "vips": {"abs": 0, "pct": 0}, "leads": {"abs": 0, "pct": 0}, "qls": {"abs": 0, "pct": 0}, "bookings": {"abs": 0, "pct": 0}, "registers": {"abs": 0, "pct": 0}, "online_schedule": {"abs": 0, "pct": 0}, "ctr": {"abs": -0.12503125781445362, "pct": -100.0}, "cpc": {"abs": -0.137, "pct": -100.0}, "cpm": {"abs": -0.17129282320580147, "pct": -100.0}, "cpl": {"abs": 0, "pct": 0}, "cpql": {"abs": 0, "pct": 0}, "cpb": {"abs": 0, "pct": 0}, "cpv": {"abs": 0, "pct": 0}, "cpr": {"abs": 0, "pct": 0}, "cpos": {"abs": 0, "pct": 0}, "click_to_vip": {"abs": 0, "pct": 0}, "vip_to_lead": {"abs": 0, "pct": 0}, "lead_to_booking": {"abs": 0, "pct": 0}, "click_to_register": {"abs": 0, "pct": 0}, "register_to_os": {"abs": 0, "pct": 0}}, "sparkline": [60.95, 58.87, 51.36, 47.44, 47.18, 49.17, 61.71, 54.73, 26.3, 18.36, 19.2, 19.37, 20.0, 21.91, 2.74, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}]}}}, "overview": {"Sales": {"spend_curr": 0, "spend_prev": 0, "spend_delta": 0, "campaigns_count": 0}, "Purchase": {"spend_curr": 0, "spend_prev": 0, "spend_delta": 0, "campaigns_count": 0}, "BrandKwd": {"spend_curr": 0, "spend_prev": 0, "spend_delta": 0, "campaigns_count": 0}, "Online Branding": {"spend_curr": 73.75, "spend_prev": 348.59999999999997, "spend_delta": -78.84394721744118, "campaigns_count": 4}}};
+const VERTICALS = ["Sales", "Purchase", "BrandKwd", "Online Branding"];
+const CHANNELS = ["Meta", "Search", "Performance Max", "Demand Gen"];
+const CH_COLORS = {"Demand Gen": "#FF4757", "Meta": "#0467FC", "Performance Max": "#FF9F43", "Search": "#00C48C"};
+const VERT_COLORS = {"BrandKwd": "#FF9F43", "Online Branding": "#A55EEA", "Purchase": "#00C48C", "Sales": "#0467FC"};
+const KAVAK_BLUE = '#0467FC', GREEN = '#00C48C', RED = '#FF4757', ORANGE = '#FF9F43', PURPLE = '#A55EEA';
+const TEXT = 'rgba(255,255,255,0.8)', GRID = 'rgba(255,255,255,0.06)';
+
+Chart.defaults.color = TEXT;
+Chart.defaults.borderColor = GRID;
+Chart.defaults.font.family = 'Inter, sans-serif';
+Chart.defaults.font.size = 11;
+
+// ── Formatters ──
+const fmt = {
+  money: v => v == null ? '—' : '$' + Math.round(v).toLocaleString(),
+  money2: v => v == null ? '—' : '$' + (Math.round(v*100)/100).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}),
+  int: v => v == null ? '—' : Math.round(v).toLocaleString(),
+  pct: v => v == null ? '—' : (Math.round(v*10)/10) + '%',
+  pct1: v => v == null ? '—' : (Math.round(v*100)/100).toFixed(2) + '%',
+  delta: d => {
+    if (!d || d.pct == null) return '';
+    const s = d.pct >= 0 ? '+' : '';
+    const cls = d.pct > 0.5 ? 'up' : d.pct < -0.5 ? 'down' : 'flat';
+    return `<span class="delta-cell ${cls}">${s}${d.pct.toFixed(1)}%</span>`;
+  },
+  deltaCost: d => {
+    if (!d || d.pct == null) return '';
+    const s = d.pct >= 0 ? '+' : '';
+    const cls = d.pct < -0.5 ? 'up' : d.pct > 0.5 ? 'down' : 'flat';
+    return `<span class="delta-cell ${cls}">${s}${d.pct.toFixed(1)}%</span>`;
+  },
+};
+
+// ── Tabs ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Renderers ──
+
+function kpiCard(label, value, delta, prevText, costMode) {
+  let deltaHtml = '';
+  if (delta && delta.pct != null) {
+    const sign = delta.pct >= 0 ? '+' : '';
+    let cls = 'flat';
+    if (costMode) {
+      cls = delta.pct < -0.5 ? 'up' : delta.pct > 0.5 ? 'down' : 'flat';
+    } else {
+      cls = delta.pct > 0.5 ? 'up' : delta.pct < -0.5 ? 'down' : 'flat';
+    }
+    deltaHtml = `<div class="kpi-delta ${cls}">${sign}${delta.pct.toFixed(1)}% WoW</div>`;
+  }
+  return `<div class="kpi">
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-val">${value}</div>
+    ${deltaHtml}
+    <div class="kpi-prev">${prevText}</div>
+  </div>`;
+}
+
+function buildKpis(v) {
+  const k = DATA.verticals[v].kpis;
+  let cards = '';
+  cards += kpiCard('Spend', fmt.money(k.spend.curr), k.spend, 'prev: ' + fmt.money(k.spend.prev));
+  cards += kpiCard('Impresiones', fmt.int(k.impressions.curr), k.impressions, 'prev: ' + fmt.int(k.impressions.prev));
+  cards += kpiCard('Clicks', fmt.int(k.clicks.curr), k.clicks, 'prev: ' + fmt.int(k.clicks.prev));
+  cards += kpiCard('CTR', fmt.pct1(k.ctr.curr), k.ctr, 'prev: ' + fmt.pct1(k.ctr.prev));
+  cards += kpiCard('CPM', fmt.money2(k.cpm.curr), k.cpm, 'prev: ' + fmt.money2(k.cpm.prev), true);
+  cards += kpiCard('CPC', fmt.money2(k.cpc.curr), k.cpc, 'prev: ' + fmt.money2(k.cpc.prev), true);
+
+  if (v === 'Sales') {
+    cards += kpiCard('VIPs', fmt.int(k.vips.curr), k.vips, 'prev: ' + fmt.int(k.vips.prev));
+    cards += kpiCard('Leads', fmt.int(k.leads.curr), k.leads, 'prev: ' + fmt.int(k.leads.prev));
+    cards += kpiCard('QLs (Cart Leads)', fmt.int(k.qls.curr), k.qls, 'prev: ' + fmt.int(k.qls.prev));
+    cards += kpiCard('Bookings', fmt.int(k.bookings.curr), k.bookings, 'prev: ' + fmt.int(k.bookings.prev));
+    cards += kpiCard('CPV', fmt.money2(k.cpv.curr), k.cpv, 'prev: ' + fmt.money2(k.cpv.prev), true);
+    cards += kpiCard('CPL', fmt.money2(k.cpl.curr), k.cpl, 'prev: ' + fmt.money2(k.cpl.prev), true);
+    cards += kpiCard('CPQL', fmt.money2(k.cpql.curr), k.cpql, 'prev: ' + fmt.money2(k.cpql.prev), true);
+    if (k.cpb && k.cpb.curr) cards += kpiCard('CPB', fmt.money2(k.cpb.curr), k.cpb, 'prev: ' + fmt.money2(k.cpb.prev), true);
+  } else if (v === 'Purchase') {
+    cards += kpiCard('Registros', fmt.int(k.registers.curr), k.registers, 'prev: ' + fmt.int(k.registers.prev));
+    cards += kpiCard('Online Schedule', fmt.int(k.online_schedule.curr), k.online_schedule, 'prev: ' + fmt.int(k.online_schedule.prev));
+    cards += kpiCard('CPR', fmt.money2(k.cpr.curr), k.cpr, 'prev: ' + fmt.money2(k.cpr.prev), true);
+    cards += kpiCard('CPOS', fmt.money2(k.cpos.curr), k.cpos, 'prev: ' + fmt.money2(k.cpos.prev), true);
+  }
+  document.getElementById('kpi-' + v).innerHTML = cards;
+}
+
+function buildSpendDonut(v) {
+  const cs = DATA.verticals[v].channel_spend;
+  const labels = [], data = [], colors = [];
+  CHANNELS.forEach(ch => {
+    if (cs[ch] > 0) {
+      labels.push(ch);
+      data.push(cs[ch]);
+      colors.push(CH_COLORS[ch]);
+    }
+  });
+  if (data.length === 0) {
+    document.getElementById('spend-donut-' + v).parentElement.innerHTML = '<div class="empty-state">Sin spend esta semana</div>';
+    return;
+  }
+  new Chart(document.getElementById('spend-donut-' + v), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins: {
+        legend: {position:'right', labels:{boxWidth:10}},
+        tooltip: { callbacks: { label: c => c.label + ': ' + fmt.money(c.raw) + ' (' + (c.raw/c.dataset.data.reduce((a,b)=>a+b)*100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+}
+
+function buildTopSpend(v) {
+  const camps = DATA.verticals[v].campaigns.slice(0, 10);
+  if (camps.length === 0) {
+    document.getElementById('top-spend-' + v).parentElement.innerHTML = '<div class="empty-state">Sin campañas activas</div>';
+    return;
+  }
+  new Chart(document.getElementById('top-spend-' + v), {
+    type: 'bar',
+    data: {
+      labels: camps.map(c => c.short_name.length > 32 ? c.short_name.slice(0,32)+'…' : c.short_name),
+      datasets: [{
+        data: camps.map(c => c.curr.spend),
+        backgroundColor: camps.map(c => CH_COLORS[c.channel] || KAVAK_BLUE),
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+      plugins: { legend: {display:false}, tooltip: { callbacks: { label: c => fmt.money(c.raw) } } },
+      scales: { x: { grid: {color:GRID}, ticks: {callback: v => '$'+(v/1000).toFixed(0)+'k'} }, y: {grid:{display:false}, ticks:{font:{size:10}}} }
+    }
+  });
+}
+
+function buildChannelTable(v) {
+  const rows = DATA.verticals[v].channel_rows;
+  const isSales = v === 'Sales';
+  const isPurchase = v === 'Purchase';
+  let cols, header;
+  if (isSales) {
+    header = ['Canal','Impr','Clicks','CTR','Spend','VIPs','Leads','QLs','Bookings','CPM','CPV','CPL','CPQL'];
+    cols = ['impressions','clicks','ctr','spend','vips','leads','qls','bookings','cpm','cpv','cpl','cpql'];
+  } else if (isPurchase) {
+    header = ['Canal','Impr','Clicks','CTR','Spend','Registros','OS','C→R','R→OS','CPM','CPR','CPOS'];
+    cols = ['impressions','clicks','ctr','spend','registers','online_schedule','click_to_register','register_to_os','cpm','cpr','cpos'];
+  } else {
+    header = ['Canal','Impr','Clicks','CTR','Spend','CPM','CPC'];
+    cols = ['impressions','clicks','ctr','spend','cpm','cpc'];
+  }
+  const costCols = new Set(['cpm','cpc','cpv','cpl','cpql','cpb','cpr','cpos']);
+  let h = '<thead><tr>' + header.map((x,i) => `<th class="${i===0?'left':''}">${x}</th>`).join('') + '</tr></thead>';
+  let body = '';
+  rows.forEach(r => {
+    let line = `<tr><td class="left"><span class="ch-tag" style="background:${CH_COLORS[r.channel]}22;color:${CH_COLORS[r.channel]}">${r.channel}</span></td>`;
+    cols.forEach(col => {
+      const cur = r.curr[col];
+      const d = r.delta[col];
+      let display;
+      if (col === 'spend') display = fmt.money(cur);
+      else if (col === 'ctr' || col.includes('to_')) display = fmt.pct1(cur);
+      else if (costCols.has(col)) display = fmt.money2(cur);
+      else display = fmt.int(cur);
+      const deltaHtml = costCols.has(col) ? fmt.deltaCost(d) : fmt.delta(d);
+      line += `<td>${display}${deltaHtml}</td>`;
+    });
+    line += '</tr>';
+    body += line;
+  });
+  document.getElementById('ch-table-' + v).innerHTML = h + '<tbody>' + body + '</tbody>';
+}
+
+function buildDailyTrend(v) {
+  const series = DATA.verticals[v].daily_series;
+  if (!series || !series.Total) {
+    document.getElementById('daily-grid-' + v).innerHTML = '<div class="empty-state">Sin data daily</div>';
+    return;
+  }
+  let metrics;
+  if (v === 'Sales') metrics = [['spend','Spend','money'], ['leads','Leads','int'], ['qls','QLs (Cart Leads)','int'], ['vips','VIPs','int']];
+  else if (v === 'Purchase') metrics = [['spend','Spend','money'], ['registers','Registros','int'], ['online_schedule','Online Schedule','int'], ['clicks','Clicks','int']];
+  else metrics = [['spend','Spend','money'], ['impressions','Impresiones','int'], ['clicks','Clicks','int']];
+
+  let html = '';
+  metrics.forEach(([key, label]) => {
+    html += `<div class="card"><h4>${label} diario</h4><div class="chart-box short"><canvas id="daily-${v}-${key}"></canvas></div></div>`;
+  });
+  document.getElementById('daily-grid-' + v).innerHTML = html;
+
+  metrics.forEach(([key, label, t]) => {
+    const datasets = [];
+    CHANNELS.forEach(ch => {
+      if (series[ch] && series[ch][key]) {
+        const sum = series[ch][key].reduce((a,b)=>a+b, 0);
+        if (sum > 0) {
+          datasets.push({
+            label: ch, data: series[ch][key],
+            borderColor: CH_COLORS[ch], backgroundColor: CH_COLORS[ch]+'22',
+            tension: 0.25, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+          });
+        }
+      }
+    });
+    new Chart(document.getElementById(`daily-${v}-${key}`), {
+      type: 'line',
+      data: { labels: series.Total.dates, datasets },
+      options: {
+        responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+        plugins: {
+          legend: {position:'top', labels:{boxWidth:8, font:{size:10}}},
+          tooltip: { callbacks: { label: c => c.dataset.label + ': ' + (t==='money' ? fmt.money(c.raw) : fmt.int(c.raw)) } }
+        },
+        scales: {
+          x: { grid:{display:false}, ticks:{maxTicksLimit:8, font:{size:9}} },
+          y: { grid:{color:GRID}, ticks:{callback: v => t==='money' ? '$'+(v/1000).toFixed(0)+'k' : v.toLocaleString()} },
+        }
+      }
+    });
+  });
+}
+
+function buildScatter(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const isSales = v === 'Sales';
+  const xKey = isSales ? 'leads' : 'registers';
+  const xLabel = isSales ? 'Leads' : 'Registros';
+  const yKey = isSales ? 'cpl' : 'cpr';
+  const yLabel = isSales ? 'CPL' : 'CPR';
+  const camps = DATA.verticals[v].campaigns.filter(c => c.curr[xKey] > 0 && c.curr[yKey] > 0);
+  if (camps.length === 0) {
+    document.getElementById('scatter-' + v).parentElement.innerHTML = '<div class="empty-state">Sin data de resultados</div>';
+    return;
+  }
+  const datasetsByCh = {};
+  camps.forEach(c => {
+    if (!datasetsByCh[c.channel]) datasetsByCh[c.channel] = {label: c.channel, data: [], backgroundColor: CH_COLORS[c.channel] || KAVAK_BLUE};
+    datasetsByCh[c.channel].data.push({
+      x: c.curr[xKey], y: c.curr[yKey], r: Math.max(4, Math.min(20, Math.sqrt(c.curr.spend)/4)),
+      camp: c.short_name, spend: c.curr.spend
+    });
+  });
+  new Chart(document.getElementById('scatter-' + v), {
+    type: 'bubble',
+    data: { datasets: Object.values(datasetsByCh) },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: {position:'top', labels:{boxWidth:8}},
+        tooltip: { callbacks: { label: c => c.raw.camp + ' · ' + xLabel + ': ' + fmt.int(c.raw.x) + ' · ' + yLabel + ': ' + fmt.money2(c.raw.y) + ' · Spend: ' + fmt.money(c.raw.spend) } }
+      },
+      scales: {
+        x: { title:{display:true, text:xLabel, color:TEXT}, grid:{color:GRID} },
+        y: { title:{display:true, text:yLabel + ' ($)', color:TEXT}, grid:{color:GRID}, ticks: {callback: v=>'$'+v.toFixed(0)} },
+      }
+    }
+  });
+}
+
+function buildDualAxis(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const series = DATA.verticals[v].daily_series.Total;
+  if (!series) return;
+  const isSales = v === 'Sales';
+  const resultKey = isSales ? 'leads' : 'registers';
+  const resultLabel = isSales ? 'Leads' : 'Registros';
+  new Chart(document.getElementById('dual-axis-' + v), {
+    data: {
+      labels: series.dates,
+      datasets: [
+        { type: 'bar', label: 'Spend', data: series.spend, backgroundColor: KAVAK_BLUE+'88', borderRadius: 2, yAxisID: 'y' },
+        { type: 'line', label: resultLabel, data: series[resultKey], borderColor: GREEN, backgroundColor: GREEN+'22', tension: 0.25, borderWidth: 2, pointRadius: 0, yAxisID: 'y1' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, interaction: {mode:'index', intersect:false},
+      plugins: { legend: {position:'top', labels:{boxWidth:8}} },
+      scales: {
+        x: { grid:{display:false}, ticks:{maxTicksLimit:8, font:{size:9}} },
+        y: { position:'left', title:{display:true,text:'Spend',color:TEXT}, grid:{color:GRID}, ticks: {callback: v=>'$'+(v/1000).toFixed(0)+'k'} },
+        y1: { position:'right', title:{display:true,text:resultLabel,color:GREEN}, grid:{display:false}, ticks: {color:GREEN} },
+      }
+    }
+  });
+}
+
+function buildFunnel(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const k = DATA.verticals[v].kpis;
+  let stages;
+  if (v === 'Sales') {
+    stages = [
+      {label:'Clicks', val: k.clicks.curr},
+      {label:'VIPs', val: k.vips.curr},
+      {label:'Leads', val: k.leads.curr},
+      {label:'QLs (Cart Leads)', val: k.qls.curr},
+      {label:'Bookings', val: k.bookings.curr},
+    ];
+  } else {
+    stages = [
+      {label:'Clicks', val: k.clicks.curr},
+      {label:'Registros', val: k.registers.curr},
+      {label:'Online Schedule', val: k.online_schedule.curr},
+    ];
+  }
+  const max = Math.max(...stages.map(s => s.val));
+  if (max === 0) {
+    document.getElementById('funnel-' + v).innerHTML = '<div class="empty-state">Sin datos para funnel</div>';
+    return;
+  }
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+  stages.forEach((s, i) => {
+    const w = (s.val / max * 100).toFixed(1);
+    const conv = i > 0 && stages[i-1].val > 0 ? (s.val / stages[i-1].val * 100).toFixed(1) + '%' : '';
+    html += `<div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:140px;font-weight:600;font-size:12px;">${s.label}</div>
+      <div style="flex:1;background:rgba(255,255,255,0.05);height:32px;border-radius:6px;overflow:hidden;position:relative;">
+        <div style="background:${KAVAK_BLUE};height:100%;width:${w}%;display:flex;align-items:center;padding:0 10px;font-weight:700;font-size:12px;">${fmt.int(s.val)}</div>
+      </div>
+      <div style="width:80px;text-align:right;font-size:11px;color:var(--text-2);">${conv}</div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('funnel-' + v).innerHTML = html;
+}
+
+function buildMaster(v) {
+  const isSales = v === 'Sales';
+  const isPurchase = v === 'Purchase';
+  let cols;
+  if (isSales) {
+    cols = [
+      {key:'name', label:'Campaña', type:'text', align:'left'},
+      {key:'channel', label:'Canal', type:'channel'},
+      {key:'status', label:'Status', type:'status'},
+      {key:'days_active_30', label:'Días', type:'int'},
+      {key:'spend', label:'Spend', type:'money'},
+      {key:'impressions', label:'Impr', type:'int'},
+      {key:'clicks', label:'Clicks', type:'int'},
+      {key:'ctr', label:'CTR', type:'pct'},
+      {key:'cpm', label:'CPM', type:'money2'},
+      {key:'cpc', label:'CPC', type:'money2'},
+      {key:'vips', label:'VIPs', type:'int'},
+      {key:'leads', label:'Leads', type:'int'},
+      {key:'qls', label:'QLs', type:'int'},
+      {key:'bookings', label:'Bookings', type:'int'},
+      {key:'cpv', label:'CPV', type:'money2'},
+      {key:'cpl', label:'CPL', type:'money2'},
+      {key:'cpql', label:'CPQL', type:'money2'},
+      {key:'click_to_vip', label:'C→V', type:'pct'},
+      {key:'vip_to_lead', label:'V→L', type:'pct'},
+      {key:'lead_to_booking', label:'L→B', type:'pct'},
+      {key:'sparkline', label:'Spend 30d', type:'spark'},
+    ];
+  } else if (isPurchase) {
+    cols = [
+      {key:'name', label:'Campaña', type:'text', align:'left'},
+      {key:'channel', label:'Canal', type:'channel'},
+      {key:'status', label:'Status', type:'status'},
+      {key:'days_active_30', label:'Días', type:'int'},
+      {key:'spend', label:'Spend', type:'money'},
+      {key:'impressions', label:'Impr', type:'int'},
+      {key:'clicks', label:'Clicks', type:'int'},
+      {key:'ctr', label:'CTR', type:'pct'},
+      {key:'cpm', label:'CPM', type:'money2'},
+      {key:'cpc', label:'CPC', type:'money2'},
+      {key:'registers', label:'Registros', type:'int'},
+      {key:'online_schedule', label:'OS', type:'int'},
+      {key:'cpr', label:'CPR', type:'money2'},
+      {key:'cpos', label:'CPOS', type:'money2'},
+      {key:'click_to_register', label:'C→R', type:'pct'},
+      {key:'register_to_os', label:'R→OS', type:'pct'},
+      {key:'sparkline', label:'Spend 30d', type:'spark'},
+    ];
+  } else {
+    cols = [
+      {key:'name', label:'Campaña', type:'text', align:'left'},
+      {key:'channel', label:'Canal', type:'channel'},
+      {key:'status', label:'Status', type:'status'},
+      {key:'days_active_30', label:'Días', type:'int'},
+      {key:'spend', label:'Spend', type:'money'},
+      {key:'impressions', label:'Impr', type:'int'},
+      {key:'clicks', label:'Clicks', type:'int'},
+      {key:'ctr', label:'CTR', type:'pct'},
+      {key:'cpm', label:'CPM', type:'money2'},
+      {key:'cpc', label:'CPC', type:'money2'},
+      {key:'sparkline', label:'Spend 30d', type:'spark'},
+    ];
+  }
+
+  const camps = DATA.verticals[v].campaigns;
+  const tableEl = document.getElementById('master-' + v);
+
+  function getVal(c, key) {
+    if (key === 'name') return c.short_name;
+    if (key === 'channel' || key === 'status' || key === 'sparkline' || key === 'days_active_30') return c[key];
+    return c.curr[key];
+  }
+  function getDelta(c, key) {
+    if (['name','channel','status','sparkline','days_active_30'].includes(key)) return null;
+    return c.delta[key];
+  }
+
+  let sortKey = 'spend', sortDir = -1;
+  let filterText = '', filterCh = '', filterStatus = '';
+
+  function render() {
+    let header = '<thead><tr>';
+    cols.forEach((col, i) => {
+      const cls = (col.align === 'left' || i === 0) ? 'left' : '';
+      const sorted = col.key === sortKey ? 'sorted' : '';
+      const arrow = col.key === sortKey ? (sortDir < 0 ? '▼' : '▲') : '';
+      header += `<th class="${cls} ${sorted}" data-sort="${col.key}">${col.label}<span class="sort-arrow">${arrow}</span></th>`;
+    });
+    header += '</tr></thead>';
+
+    let filtered = camps.filter(c => {
+      if (filterText && !c.name.toLowerCase().includes(filterText.toLowerCase())) return false;
+      if (filterCh && c.channel !== filterCh) return false;
+      if (filterStatus && c.status !== filterStatus) return false;
+      return true;
+    });
+
+    if (['sparkline'].includes(sortKey)) sortKey = 'spend';
+    filtered.sort((a, b) => {
+      const va = getVal(a, sortKey), vb = getVal(b, sortKey);
+      if (typeof va === 'string') return sortDir * va.localeCompare(vb);
+      return sortDir * ((vb || 0) - (va || 0));
+    });
+
+    let body = '';
+    const costCols = new Set(['cpm','cpc','cpv','cpl','cpql','cpb','cpr','cpos']);
+    filtered.forEach((c, idx) => {
+      let row = '<tr>';
+      cols.forEach(col => {
+        const v = getVal(c, col.key);
+        const d = getDelta(c, col.key);
+        let cell;
+        if (col.key === 'name') cell = `<td class="left name" title="${c.name}">${v}</td>`;
+        else if (col.key === 'channel') cell = `<td class="left"><span class="ch-tag" style="background:${CH_COLORS[v]}22;color:${CH_COLORS[v]}">${v}</span></td>`;
+        else if (col.key === 'status') cell = `<td class="left"><span class="pill ${v.toLowerCase().replace(' ','')}">${v}</span></td>`;
+        else if (col.key === 'sparkline') {
+          const sparkId = `spark-${v}-${idx}-${c.name.replace(/\W/g,'')}`;
+          cell = `<td><canvas class="spark" id="${sparkId}" data-spark='${JSON.stringify(c.sparkline)}'></canvas></td>`;
+        }
+        else if (col.type === 'money') cell = `<td>${fmt.money(v)}${costCols.has(col.key) ? fmt.deltaCost(d) : fmt.delta(d)}</td>`;
+        else if (col.type === 'money2') cell = `<td>${fmt.money2(v)}${costCols.has(col.key) ? fmt.deltaCost(d) : fmt.delta(d)}</td>`;
+        else if (col.type === 'pct') cell = `<td>${fmt.pct1(v)}${fmt.delta(d)}</td>`;
+        else if (col.type === 'int') cell = `<td>${fmt.int(v)}${col.key === 'days_active_30' ? '' : fmt.delta(d)}</td>`;
+        else cell = `<td>${v}</td>`;
+        row += cell;
+      });
+      row += '</tr>';
+      body += row;
+    });
+
+    tableEl.innerHTML = header + '<tbody>' + body + '</tbody>';
+
+    // Bind sort
+    tableEl.querySelectorAll('th').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.sort;
+        if (sortKey === k) sortDir = -sortDir;
+        else { sortKey = k; sortDir = -1; }
+        render();
+      });
+    });
+
+    // Render sparklines
+    tableEl.querySelectorAll('canvas.spark').forEach(c => {
+      const data = JSON.parse(c.dataset.spark);
+      new Chart(c, {
+        type: 'line',
+        data: { labels: data.map((_,i)=>i), datasets: [{data, borderColor: KAVAK_BLUE, backgroundColor: KAVAK_BLUE+'22', borderWidth:1, pointRadius:0, fill:true, tension:0.3}] },
+        options: { responsive:false, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}}, animation:false }
+      });
+    });
+  }
+
+  document.getElementById('search-' + v).addEventListener('input', e => { filterText = e.target.value; render(); });
+  document.getElementById('ch-filter-' + v).addEventListener('change', e => { filterCh = e.target.value; render(); });
+  document.getElementById('status-filter-' + v).addEventListener('change', e => { filterStatus = e.target.value; render(); });
+  render();
+}
+
+function buildQuadrant(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const isSales = v === 'Sales';
+  const xKey = isSales ? 'leads' : 'registers';
+  const yKey = isSales ? 'cpl' : 'cpr';
+  const xLabel = isSales ? 'Leads' : 'Registros';
+  const yLabel = isSales ? 'CPL' : 'CPR';
+
+  const camps = DATA.verticals[v].campaigns.filter(c => c.curr[xKey] > 0 && c.curr[yKey] > 0);
+  if (camps.length === 0) {
+    document.getElementById('quad-' + v).parentElement.innerHTML = '<div class="empty-state">Sin data suficiente para quadrant</div>';
+    return;
+  }
+  const xs = camps.map(c => c.curr[xKey]).sort((a,b)=>a-b);
+  const ys = camps.map(c => c.curr[yKey]).sort((a,b)=>a-b);
+  const xMed = xs[Math.floor(xs.length/2)];
+  const yMed = ys[Math.floor(ys.length/2)];
+
+  const datasetsByCh = {};
+  camps.forEach(c => {
+    if (!datasetsByCh[c.channel]) datasetsByCh[c.channel] = {label: c.channel, data: [], backgroundColor: CH_COLORS[c.channel] || KAVAK_BLUE};
+    datasetsByCh[c.channel].data.push({
+      x: c.curr[xKey], y: c.curr[yKey],
+      r: Math.max(5, Math.min(22, Math.sqrt(c.curr.spend)/3)),
+      camp: c.short_name, spend: c.curr.spend
+    });
+  });
+
+  new Chart(document.getElementById('quad-' + v), {
+    type: 'bubble',
+    data: { datasets: Object.values(datasetsByCh) },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: {position:'top', labels:{boxWidth:8}},
+        tooltip: { callbacks: { label: c => `${c.raw.camp} · ${xLabel}: ${fmt.int(c.raw.x)} · ${yLabel}: ${fmt.money2(c.raw.y)} · Spend: ${fmt.money(c.raw.spend)}` } },
+        annotation: false,
+      },
+      scales: {
+        x: { title: {display:true, text: xLabel + ' (volumen) →', color:TEXT}, grid:{color:GRID} },
+        y: { title: {display:true, text: yLabel + ' (más bajo = mejor) ↑', color:TEXT}, grid:{color:GRID}, reverse: true, ticks: {callback: v=>'$'+v.toFixed(0)} },
+      }
+    },
+    plugins: [{
+      id: 'quadrantLines',
+      afterDraw(chart) {
+        const {ctx, chartArea, scales} = chart;
+        const xPx = scales.x.getPixelForValue(xMed);
+        const yPx = scales.y.getPixelForValue(yMed);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(xPx, chartArea.top); ctx.lineTo(xPx, chartArea.bottom);
+        ctx.moveTo(chartArea.left, yPx); ctx.lineTo(chartArea.right, yPx);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '700 10px Inter';
+        ctx.fillText('⭐ STARS', xPx + 8, yPx - 6);
+        ctx.fillText('🐎 WORKHORSES', chartArea.left + 8, yPx - 6);
+        ctx.fillText('❓ QUESTION MARKS', xPx + 8, chartArea.bottom - 8);
+        ctx.fillText('⚠️ DOGS', chartArea.left + 8, chartArea.bottom - 8);
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+function buildMovers(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const m = DATA.verticals[v].movers;
+  const blocks = [
+    {title:'📈 Top 5 ganadores en volumen', items: m.gainers, isVol: true, isUp: true},
+    {title:'📉 Top 5 perdedores en volumen', items: m.losers, isVol: true, isUp: false},
+    {title:'✅ Top 5 mejor eficiencia', items: m.eff_up, isVol: false, isUp: true},
+    {title:'❌ Top 5 peor eficiencia', items: m.eff_down, isVol: false, isUp: false},
+    {title:'🆕 Nuevas esta semana', items: m.new.map(c => ({c, d:null})), isStatic: true},
+    {title:'⏸️ Pausadas esta semana', items: m.paused.map(c => ({c, d:null})), isStatic: true},
+  ];
+  let html = '';
+  blocks.forEach(b => {
+    let rows = '';
+    if (b.items.length === 0) rows = '<div style="font-size:11px;color:var(--text-3);">Sin movimientos</div>';
+    else b.items.forEach(item => {
+      const c = item.c;
+      let deltaStr = '';
+      if (!b.isStatic && item.d) {
+        const cls = b.isUp ? 'up' : 'down';
+        deltaStr = `<span class="delta ${b.isUp ? 'up':'down'}" style="color:${b.isUp?GREEN:RED}">${item.d.abs > 0 ? '+':''}${b.isVol ? fmt.int(item.d.abs) : fmt.money2(item.d.abs)}</span>`;
+      } else {
+        deltaStr = `<span class="delta" style="color:var(--text-3)">${fmt.money(c.curr.spend)}</span>`;
+      }
+      rows += `<div class="mover-row"><span class="name" title="${c.name}">${c.short_name}</span>${deltaStr}</div>`;
+    });
+    html += `<div class="mover-block"><h5>${b.title}</h5>${rows}</div>`;
+  });
+  document.getElementById('movers-' + v).innerHTML = html;
+}
+
+function buildShareEvolution(v) {
+  const top10 = DATA.verticals[v].campaigns.slice(0, 10);
+  if (top10.length === 0) {
+    document.getElementById('share-' + v).parentElement.innerHTML = '<div class="empty-state">Sin data</div>';
+    return;
+  }
+  // Need daily spend per campaign — use sparkline
+  const dates = DATA.verticals[v].daily_series.Total ? DATA.verticals[v].daily_series.Total.dates : [];
+  const datasets = top10.map((c, i) => ({
+    label: c.short_name.length > 35 ? c.short_name.slice(0,35)+'…' : c.short_name,
+    data: c.sparkline,
+    backgroundColor: [KAVAK_BLUE, GREEN, ORANGE, RED, PURPLE, '#5DADE2', '#48C9B0', '#F39C12', '#E74C3C', '#9B59B6'][i] + 'CC',
+    borderWidth: 0, fill: true,
+  }));
+  new Chart(document.getElementById('share-' + v), {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction: {mode:'index', intersect:false},
+      plugins: { legend: {position:'right', labels:{boxWidth:8, font:{size:10}}}, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt.money(c.raw) } } },
+      scales: {
+        x: { stacked:true, grid:{display:false}, ticks:{maxTicksLimit:8, font:{size:9}} },
+        y: { stacked:true, grid:{color:GRID}, ticks:{callback: v => '$'+(v/1000).toFixed(0)+'k'} },
+      }
+    }
+  });
+}
+
+function buildHealth(v) {
+  if (v !== 'Sales' && v !== 'Purchase') return;
+  const camps = DATA.verticals[v].campaigns.filter(c => c.health && c.health.score > 0);
+  if (camps.length === 0) {
+    document.getElementById('health-' + v).innerHTML = '<thead><tr><th class="left">Campaña</th></tr></thead><tbody><tr><td class="left">Sin data suficiente</td></tr></tbody>';
+    return;
+  }
+  camps.sort((a,b) => b.health.score - a.health.score);
+  let h = '<thead><tr><th class="left">Campaña</th><th class="left">Canal</th><th>Score</th><th class="left">Health</th><th>Eficiencia</th><th>Volumen</th><th>Conversión</th><th>Tendencia</th></tr></thead><tbody>';
+  camps.forEach(c => {
+    const s = c.health.score;
+    const cls = s >= 70 ? 'green' : s >= 40 ? 'orange' : 'red';
+    h += `<tr>
+      <td class="left name" title="${c.name}">${c.short_name}</td>
+      <td class="left"><span class="ch-tag" style="background:${CH_COLORS[c.channel]}22;color:${CH_COLORS[c.channel]}">${c.channel}</span></td>
+      <td><strong>${s.toFixed(0)}</strong></td>
+      <td class="left" style="min-width:140px"><div class="health-bar"><div class="health-fill ${cls}" style="width:${s}%"></div></div></td>
+      <td>${c.health.eff.toFixed(0)}</td>
+      <td>${c.health.vol.toFixed(0)}</td>
+      <td>${c.health.conv.toFixed(0)}</td>
+      <td>${c.health.trend.toFixed(0)}</td>
+    </tr>`;
+  });
+  h += '</tbody>';
+  document.getElementById('health-' + v).innerHTML = h;
+}
+
+// ── Overview ──
+function buildOverview() {
+  const labels = VERTICALS;
+  const data = labels.map(v => DATA.overview[v].spend_curr);
+  const colors = labels.map(v => VERT_COLORS[v]);
+  new Chart(document.getElementById('ov-spend-vertical'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{data, backgroundColor: colors, borderWidth:0}] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'60%', plugins: { legend: {position:'right', labels:{boxWidth:10}}, tooltip: { callbacks: { label: c => c.label + ': ' + fmt.money(c.raw) } } } }
+  });
+
+  const stackData = CHANNELS.map(ch => ({
+    label: ch,
+    data: VERTICALS.map(v => DATA.verticals[v].channel_spend[ch] || 0),
+    backgroundColor: CH_COLORS[ch], borderWidth:0,
+  }));
+  new Chart(document.getElementById('ov-spend-channel'), {
+    type: 'bar',
+    data: { labels: VERTICALS, datasets: stackData },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: { legend: {position:'top', labels:{boxWidth:8}}, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt.money(c.raw) } } },
+      scales: { x: { stacked:true, grid:{display:false} }, y: { stacked:true, grid:{color:GRID}, ticks: {callback: v=>'$'+(v/1000).toFixed(0)+'k'} } }
+    }
+  });
+
+  // Quick health table
+  let body = '';
+  VERTICALS.forEach(v => {
+    const k = DATA.verticals[v].kpis;
+    const isSales = v === 'Sales';
+    const isPurch = v === 'Purchase';
+    const volKey = isSales ? 'leads' : isPurch ? 'registers' : 'clicks';
+    const volLabel = isSales ? 'Leads' : isPurch ? 'Registros' : 'Clicks';
+    const costKey = isSales ? 'cpl' : isPurch ? 'cpr' : 'cpc';
+    const costLabel = isSales ? 'CPL' : isPurch ? 'CPR' : 'CPC';
+    body += `<tr>
+      <td class="left"><strong>${v}</strong></td>
+      <td>${fmt.money(k.spend.curr)}</td>
+      <td>${fmt.delta(k.spend)}</td>
+      <td>${volLabel}: ${fmt.int(k[volKey].curr)}</td>
+      <td>${fmt.delta(k[volKey])}</td>
+      <td>${costLabel}: ${fmt.money2(k[costKey].curr)}</td>
+      <td>${fmt.deltaCost(k[costKey])}</td>
+      <td>${DATA.overview[v].campaigns_count}</td>
+    </tr>`;
+  });
+  document.querySelector('#ov-table tbody').innerHTML = body;
+}
+
+// ── Export CSV ──
+function exportCSV(tableId, filename) {
+  const t = document.getElementById(tableId);
+  let csv = '';
+  t.querySelectorAll('tr').forEach(tr => {
+    const cells = [];
+    tr.querySelectorAll('th, td').forEach(c => {
+      cells.push('"' + c.innerText.replace(/\n/g,' ').replace(/"/g,'""').replace(/\s+WoW.*/,'').trim() + '"');
+    });
+    csv += cells.join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename + '.csv';
+  a.click();
+}
+
+// ── Init ──
+buildOverview();
+VERTICALS.forEach(v => {
+  buildKpis(v);
+  buildSpendDonut(v);
+  buildTopSpend(v);
+  buildChannelTable(v);
+  buildDailyTrend(v);
+  buildScatter(v);
+  buildDualAxis(v);
+  buildFunnel(v);
+  buildMaster(v);
+  buildQuadrant(v);
+  buildMovers(v);
+  buildShareEvolution(v);
+  buildHealth(v);
+});
+
+</script>
+</body>
+</html>
