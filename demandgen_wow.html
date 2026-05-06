@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1200,initial-scale=1">
+  <title>CL Sales | Demandgen WoW Performance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --kavak-blue: #0467FC;
+      --kavak-dark: #1B2532;
+      --kavak-green: #00C48C;
+      --kavak-red: #FF4757;
+      --kavak-orange: #FF9F43;
+      --kavak-text: rgba(255,255,255,0.92);
+      --kavak-text-secondary: rgba(255,255,255,0.5);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #111820;
+      color: var(--kavak-text);
+      overflow: hidden;
+      height: 100vh;
+    }
+    .slide {
+      display: none;
+      position: absolute;
+      inset: 0;
+      padding: 40px 56px 36px;
+      flex-direction: column;
+      background: var(--kavak-dark);
+    }
+    .slide.active { display: flex; }
+
+    /* Nav dots */
+    .nav-dots {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 100;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dot.active { background: var(--kavak-blue); width: 20px; border-radius: 3px; }
+
+    /* Slide counter */
+    .slide-num {
+      position: absolute;
+      top: 18px; right: 28px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.2);
+      font-weight: 500;
+    }
+
+    /* Watermark */
+    .watermark {
+      position: absolute;
+      bottom: 16px; right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      opacity: 0.12;
+    }
+    .watermark svg { width: 48px; height: auto; fill: #fff; }
+    .watermark span {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Source */
+    .source {
+      position: absolute;
+      bottom: 20px; left: 56px;
+      font-size: 9px;
+      color: rgba(255,255,255,0.18);
+      font-style: italic;
+    }
+
+    /* ── SLIDE 1: COVER ── */
+    .slide-cover { justify-content: center; align-items: flex-start; }
+    .cover-logo { margin-bottom: 44px; }
+    .cover-logo svg { width: 72px; height: auto; fill: white; }
+    .cover-eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--kavak-blue);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .cover-title {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.05;
+      margin-bottom: 18px;
+      letter-spacing: -1.5px;
+    }
+    .cover-subtitle {
+      font-size: 16px;
+      color: var(--kavak-text-secondary);
+    }
+    .cover-campaign {
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.3);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      margin-top: 28px;
+      padding: 9px 15px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      display: inline-block;
+    }
+    .cover-meta {
+      position: absolute;
+      bottom: 44px; left: 56px;
+      display: flex;
+      gap: 36px;
+    }
+    .cover-meta-item { font-size: 11px; color: rgba(255,255,255,0.3); }
+    .cover-meta-item strong {
+      display: block;
+      color: rgba(255,255,255,0.55);
+      font-weight: 600;
+      margin-bottom: 2px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── SLIDE HEADER ── */
+    .slide-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .slide-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .slide-subtitle {
+      font-size: 11px;
+      color: var(--kavak-text-secondary);
+      margin-top: 3px;
+    }
+    .tag {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(4,103,252,0.15);
+      color: var(--kavak-blue);
+      border: 1px solid rgba(4,103,252,0.25);
+    }
+
+    /* ── SLIDE 2: WoW TABLE ── */
+    .wow-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .wow-table th {
+      padding: 7px 12px;
+      text-align: right;
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--kavak-text-secondary);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .wow-table th:first-child { text-align: left; }
+    .wow-table td {
+      padding: 6px 12px;
+      text-align: right;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.8);
+    }
+    .wow-table td:first-child {
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+    }
+    .wow-table .w15 {
+      color: rgba(255,255,255,0.95) !important;
+      font-weight: 700;
+    }
+    /* Green rows */
+    .wow-table tr.hl-green td {
+      background: rgba(0,196,140,0.07);
+    }
+    .wow-table tr.hl-green td:first-child {
+      color: var(--kavak-green) !important;
+      font-weight: 700;
+      border-left: 2px solid var(--kavak-green);
+      padding-left: 10px;
+    }
+
+    /* Delta badge */
+    .delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+    }
+    .d-good { background: rgba(0,196,140,0.15); color: var(--kavak-green); }
+    .d-bad  { background: rgba(255,71,87,0.15); color: var(--kavak-red); }
+    .d-neu  { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+
+    /* ── SLIDE 3: AD GROUPS ── */
+    .ag-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+    }
+    .ag-table th {
+      padding: 7px 10px;
+      text-align: right;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--kavak-text-secondary);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .ag-table th:first-child { text-align: left; }
+    .ag-table td {
+      padding: 10px 10px;
+      text-align: right;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+    }
+    .ag-table td:first-child { text-align: left; }
+    .ag-table tr.total-row td {
+      background: rgba(255,255,255,0.04);
+      font-weight: 700;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.95);
+    }
+    .ag-name {
+      font-weight: 700;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.88);
+    }
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      background: rgba(0,196,140,0.15);
+      color: var(--kavak-green);
+    }
+
+    /* Audience cards */
+    .audience-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 10px;
+    }
+    .audience-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .aud-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 13px 15px;
+    }
+    .aud-card-name {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 9.5px;
+      color: var(--kavak-blue);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .aud-type {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .t-interest { color: var(--kavak-orange); }
+    .t-lookalike { color: var(--kavak-blue); }
+    .t-keyword { color: #A78BFA; }
+    .aud-desc {
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ SLIDE 1: COVER ══ -->
+<div class="slide slide-cover active">
+  <div class="cover-logo">
+    <svg viewBox="0 0 7774 2048"><path d="M7296.82.052L6752.798 1024l544.022 1023.948h477.424L7239.034 1024 7774.244.052zm-1130.746 0v1705.534L5275.298.052 4205.476 2047.954h470.514l599.916-1147.71 254.406 487.47h-254.406l-178.412 341.108h611.236l166.464 319.132h726.816V.052h-435.96zm-1767.734 0l-599.916 1147.71L3199.138.052h-470.514l1069.822 2047.902L4868.268.052H4398.39zm-2076.172 0l-892.04 1707.424L1072.7 1024 1607.91.052h-477.424L586.464 1024l544.022 1023.948h593.006l166.464-319.132h611.236l-178.412-341.108h-254.406l254.406-487.47 598.678 1147.71h470.514L2322.15.046zM-.244 2047.952h435.33V.05H-.244z"/></svg>
+  </div>
+  <div class="cover-eyebrow">Google Ads · Demand Gen</div>
+  <div class="cover-title">CL Sales<br>Demandgen</div>
+  <div class="cover-subtitle">WoW Performance · Semanas 13–15</div>
+  <div class="cover-subtitle" style="margin-top:5px;font-size:14px;color:rgba(255,255,255,0.35)">Mar 26 – Apr 13, 2026</div>
+  <div class="cover-campaign">cl-scl-sales-leadgen-broad-demandgen-es-aa-rmkt</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><strong>Cuenta</strong>ch-kavak-search-sales_v2</div>
+    <div class="cover-meta-item"><strong>Tipo</strong>Demand Gen</div>
+    <div class="cover-meta-item"><strong>Periodo</strong>W13 · W14 · W15</div>
+    <div class="cover-meta-item"><strong>Fecha</strong>Apr 14, 2026</div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 2: WoW METRICS ══ -->
+<div class="slide">
+  <div class="slide-num">2 / 3</div>
+  <div class="slide-header">
+    <div>
+      <div class="slide-title">WoW Performance</div>
+      <div class="slide-subtitle">Semanas 13–15 · Mar 26 – Apr 13, 2026 · WoW ∆ = W15 vs W14</div>
+    </div>
+    <span class="tag">↑ en escala</span>
+  </div>
+
+  <table class="wow-table">
+    <thead>
+      <tr>
+        <th>Métrica</th>
+        <th>W13 (3/26)</th>
+        <th>W14 (4/2)</th>
+        <th>W15 (4/9)</th>
+        <th>WoW ∆</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Spend</td>
+        <td>$103</td><td>$142</td><td class="w15">$181</td>
+        <td><span class="delta d-neu">+27.5%</span></td>
+      </tr>
+      <tr class="hl-green">
+        <td>Impresiones</td>
+        <td>133,151</td><td>274,895</td><td class="w15">470,405</td>
+        <td><span class="delta d-good">↑ 71.1%</span></td>
+      </tr>
+      <tr>
+        <td>Clicks</td>
+        <td>4,659</td><td>9,697</td><td class="w15">12,652</td>
+        <td><span class="delta d-good">↑ 30.5%</span></td>
+      </tr>
+      <tr class="hl-green">
+        <td>VIPs</td>
+        <td>327</td><td>691</td><td class="w15">789</td>
+        <td><span class="delta d-good">↑ 14.2%</span></td>
+      </tr>
+      <tr class="hl-green">
+        <td>Leads</td>
+        <td>79</td><td>159</td><td class="w15">164</td>
+        <td><span class="delta d-good">↑ 3.1%</span></td>
+      </tr>
+      <tr class="hl-green">
+        <td>QL</td>
+        <td>7</td><td>14</td><td class="w15">26</td>
+        <td><span class="delta d-good">↑ 85.7%</span></td>
+      </tr>
+      <tr>
+        <td>New Accounts</td>
+        <td>18</td><td>22</td><td class="w15">27</td>
+        <td><span class="delta d-good">↑ 22.7%</span></td>
+      </tr>
+      <tr>
+        <td>% NA</td>
+        <td>23%</td><td>14%</td><td class="w15">16%</td>
+        <td><span class="delta d-neu">+2pp</span></td>
+      </tr>
+      <tr>
+        <td>CTR</td>
+        <td>3.50%</td><td>3.53%</td><td class="w15">2.69%</td>
+        <td><span class="delta d-bad">↓ 23.8%</span></td>
+      </tr>
+      <tr>
+        <td>Click↔Traffic</td>
+        <td>7%</td><td>7%</td><td class="w15">6%</td>
+        <td><span class="delta d-neu">–1pp</span></td>
+      </tr>
+      <tr>
+        <td>Traffic↔Lead</td>
+        <td>24.2%</td><td>23.0%</td><td class="w15">20.8%</td>
+        <td><span class="delta d-bad">–2.2pp</span></td>
+      </tr>
+      <tr>
+        <td>Click↔Lead</td>
+        <td>1.7%</td><td>1.6%</td><td class="w15">1.3%</td>
+        <td><span class="delta d-bad">–0.3pp</span></td>
+      </tr>
+      <tr>
+        <td>Lead↔Insp</td>
+        <td>8.86%</td><td>8.81%</td><td class="w15">15.85%</td>
+        <td><span class="delta d-good">↑ +7pp</span></td>
+      </tr>
+      <tr>
+        <td>CPM</td>
+        <td>$0.78</td><td>$0.52</td><td class="w15">$0.38</td>
+        <td><span class="delta d-good">↓ 26.9%</span></td>
+      </tr>
+      <tr>
+        <td>CPL</td>
+        <td>$1.3</td><td>$0.9</td><td class="w15">$1.1</td>
+        <td><span class="delta d-bad">+22.2%</span></td>
+      </tr>
+      <tr>
+        <td>CPQL</td>
+        <td>$14.7</td><td>$10.1</td><td class="w15">$6.9</td>
+        <td><span class="delta d-good">↓ 31.7%</span></td>
+      </tr>
+      <tr>
+        <td>CPNA</td>
+        <td>$5.7</td><td>$6.4</td><td class="w15">$6.7</td>
+        <td><span class="delta d-bad">+4.7%</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="watermark">
+    <svg viewBox="0 0 7774 2048"><path d="M7296.82.052L6752.798 1024l544.022 1023.948h477.424L7239.034 1024 7774.244.052zm-1130.746 0v1705.534L5275.298.052 4205.476 2047.954h470.514l599.916-1147.71 254.406 487.47h-254.406l-178.412 341.108h611.236l166.464 319.132h726.816V.052h-435.96zm-1767.734 0l-599.916 1147.71L3199.138.052h-470.514l1069.822 2047.902L4868.268.052H4398.39zm-2076.172 0l-892.04 1707.424L1072.7 1024 1607.91.052h-477.424L586.464 1024l544.022 1023.948h593.006l166.464-319.132h611.236l-178.412-341.108h-254.406l254.406-487.47 598.678 1147.71h470.514L2322.15.046zM-.244 2047.952h435.33V.05H-.244z"/></svg>
+    <span>Kavak · Confidential</span>
+  </div>
+  <div class="source">Fuente: Google Ads MCC Kavak (ch-kavak-search-sales_v2) · WoW ∆ = W15 vs W14</div>
+</div>
+
+<!-- ══ SLIDE 3: AD GROUPS ══ -->
+<div class="slide">
+  <div class="slide-num">3 / 3</div>
+  <div class="slide-header">
+    <div>
+      <div class="slide-title">Ad Groups</div>
+      <div class="slide-subtitle">Acumulado Mar 26 – Apr 13, 2026 · 3 grupos activos</div>
+    </div>
+    <span class="tag">Demand Gen</span>
+  </div>
+
+  <table class="ag-table">
+    <thead>
+      <tr>
+        <th>Ad Group</th>
+        <th>Estado</th>
+        <th>Impresiones</th>
+        <th>CTR</th>
+        <th>Costo</th>
+        <th>CPM</th>
+        <th>Conversiones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="ag-name">EEK-mar_26</span></td>
+        <td><span class="status-badge">Eligible</span></td>
+        <td>582,240</td><td>2.69%</td><td>$263.79</td><td>$0.45</td><td>148</td>
+      </tr>
+      <tr>
+        <td><span class="ag-name">EEK-lal-mar_26</span></td>
+        <td><span class="status-badge">Eligible</span></td>
+        <td>269,614</td><td>4.04%</td><td>$157.50</td><td>$0.58</td><td>64</td>
+      </tr>
+      <tr>
+        <td><span class="ag-name">EEK-keywords-mar_26</span></td>
+        <td><span class="status-badge">Eligible</span></td>
+        <td>73,867</td><td>2.76%</td><td>$31.32</td><td>$0.42</td><td>16</td>
+      </tr>
+      <tr class="total-row">
+        <td>TOTAL</td>
+        <td>–</td>
+        <td>925,721</td><td>3.09%</td><td>$452.61</td><td>$0.49</td><td>228</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="audience-label">Audiencias por Ad Group</div>
+  <div class="audience-cards">
+    <div class="aud-card">
+      <div class="aud-card-name">EEK-mar_26</div>
+      <div class="aud-type t-interest">Intereses</div>
+      <div class="aud-desc">Audiencia general segmentada por intereses en autos. Alcance amplio para prospecting sin señal previa de intención.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-name">EEK-lal-mar_26</div>
+      <div class="aud-type t-lookalike">Lookalike</div>
+      <div class="aud-desc">Lookalike construida desde Amplitude sobre usuarios que realizaron un VIP en la campaña de RMKT de Meta. Alta señal de intención.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-name">EEK-keywords-mar_26</div>
+      <div class="aud-type t-keyword">Keywords</div>
+      <div class="aud-desc">Audiencia construida a partir de keywords y search terms de campañas Search. Captura demanda activa de búsqueda.</div>
+    </div>
+  </div>
+
+  <div class="watermark">
+    <svg viewBox="0 0 7774 2048"><path d="M7296.82.052L6752.798 1024l544.022 1023.948h477.424L7239.034 1024 7774.244.052zm-1130.746 0v1705.534L5275.298.052 4205.476 2047.954h470.514l599.916-1147.71 254.406 487.47h-254.406l-178.412 341.108h611.236l166.464 319.132h726.816V.052h-435.96zm-1767.734 0l-599.916 1147.71L3199.138.052h-470.514l1069.822 2047.902L4868.268.052H4398.39zm-2076.172 0l-892.04 1707.424L1072.7 1024 1607.91.052h-477.424L586.464 1024l544.022 1023.948h593.006l166.464-319.132h611.236l-178.412-341.108h-254.406l254.406-487.47 598.678 1147.71h470.514L2322.15.046zM-.244 2047.952h435.33V.05H-.244z"/></svg>
+    <span>Kavak · Confidential</span>
+  </div>
+  <div class="source">Fuente: Google Ads MCC Kavak (ch-kavak-search-sales_v2) · Acumulado W13–W15</div>
+</div>
+
+<!-- NAV DOTS -->
+<div class="nav-dots">
+  <div class="dot active" onclick="go(0)"></div>
+  <div class="dot" onclick="go(1)"></div>
+  <div class="dot" onclick="go(2)"></div>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.querySelectorAll('.dot');
+  let cur = 0;
+
+  function go(i) {
+    slides[cur].classList.remove('active');
+    dots[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(i, slides.length - 1));
+    slides[cur].classList.add('active');
+    dots[cur].classList.add('active');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') go(cur + 1);
+    if (e.key === 'ArrowLeft') go(cur - 1);
+  });
+
+  let tx;
+  document.addEventListener('touchstart', e => tx = e.touches[0].clientX);
+  document.addEventListener('touchend', e => {
+    const d = tx - e.changedTouches[0].clientX;
+    if (Math.abs(d) > 50) go(cur + (d > 0 ? 1 : -1));
+  });
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('.dot, .nav-dots')) return;
+    go(cur + (e.clientX > window.innerWidth / 2 ? 1 : -1));
+  });
+</script>
+</body>
+</html>
