@@ -69,8 +69,8 @@ footer{text-align:center;color:#94A3B8;font-size:12px;padding:20px;margin-top:20
 La reestructura del 4-5 de mayo introdujo un ad set <code>asc_generic_donate</code> que optimiza a <em>website donate</em> (upper funnel). Meta empezó a destinarle 75% del spend de Meta Sales, trayendo VIPs upper-funnel que no convierten a Lead. <strong>VIP→Lead colapsó de 13.8% a 7.6% en 1 semana.</strong>
 </div>
 <div class="tldr" style="background:#FCE7F3;border-left-color:#9D174D">
-<div class="tldr-title" style="color:#9D174D">Problema 2: Catálogo degradándose (oferta)</div>
-Desde febrero el catálogo se viene deteriorando: los leads se generan pero no agendan visita. <strong>QL→Booking cayó de 44.2% (feb) a 14-22% (mayo)</strong> — una caída del 50-60% en 3 meses. Visible en todos los canales, no solo Meta.
+<div class="tldr-title" style="color:#9D174D">Problema 2: Cambio en el mix de autos mostrados</div>
+El mix de productos que mostramos en campañas cambió notablemente: solo <strong>23% de overlap en el top 30 de autos</strong> entre principios de abril y principios de mayo. En paralelo, <strong>QL→Booking pasó de 44% (feb) a 14-22% (mayo)</strong> — una caída visible en todos los canales que sugiere que los nuevos productos mostrados están convirtiendo a booking a menor tasa que los anteriores.
 </div>
 </div>
 <p style="margin-top:14px"><strong>Efecto neto:</strong> Cada QL ganado vale menos en términos de booking + recibimos menos QLs por dólar gastado. La eficiencia Lead→Booking se cortó a la mitad por el compound.</p>
@@ -135,30 +135,68 @@ Desde febrero el catálogo se viene deteriorando: los leads se generan pero no a
 
 <!-- Investigación Problema 2 -->
 <div class="section">
-<h2><span class="num">3</span> Problema 2 — Catálogo degradándose <span class="problem-tag catalog">Oferta</span></h2>
+<h2><span class="num">3</span> Problema 2 — Cambio en el mix de productos mostrados <span class="problem-tag catalog">Oferta</span></h2>
 
-<h3>La hipótesis del equipo Supply</h3>
-<p>El equipo de Kavak viene observando que la calidad del catálogo está empeorando: la rotación de autos nuevos comprados (entrantes al stock) trae cars menos atractivos para los compradores históricos.</p>
+<h3>Evidencia 1: El mix de autos en campañas cambió</h3>
+<p>Comparando el top 30 de productos por spend en las campañas Sales Meta (general), <strong>solo 23% de los autos coincide entre principios de abril y principios de mayo</strong>. 23 de los 30 autos top rotaron en 3 semanas.</p>
 
-<h3>Cómo se confirma en los datos del funnel</h3>
-<p>Si el catálogo está empeorando, el síntoma debería aparecer <strong>río abajo del QL</strong>: la gente filtra opciones, califica como lead/QL, pero después de mirar la oferta NO agenda visita. Eso es exactamente lo que muestran los datos:</p>
+<div class="grid-2">
+<div>
+<div class="chart-title" style="margin-bottom:8px">Top 10 autos PRE (W4+W5 · 7-16 abril)</div>
+<table>
+<tr><th style="text-align:right">Spend</th><th>Auto</th></tr>
+<tr><td style="text-align:right">$12</td><td>Suzuki Alto 1.0 K10 GLX 2AB AC</td></tr>
+<tr><td style="text-align:right">$11</td><td>Mercedes Benz Clase A 1.6 200</td></tr>
+<tr><td style="text-align:right">$9</td><td>Dfm H30 1.6 ELEGANT</td></tr>
+<tr><td style="text-align:right">$8</td><td>Great Wall Voleex C10 1.5 VVT LE</td></tr>
+<tr><td style="text-align:right">$7</td><td>Kia Morning 1.2 EX DAB</td></tr>
+<tr><td style="text-align:right">$7</td><td>Ram 700 1.4 SLT SC</td></tr>
+<tr><td style="text-align:right">$7</td><td>Hyundai Getz 1.4 FL GL 2AB AC</td></tr>
+<tr><td style="text-align:right">$5</td><td>Toyota 4Runner 2.4 SR5 AUTO 4WD</td></tr>
+<tr><td style="text-align:right">$5</td><td>Suzuki Alto 1.0 K10 GLX 2AB AC</td></tr>
+<tr><td style="text-align:right">$4</td><td>Ford EcoSport 1.5 SE</td></tr>
+</table>
+</div>
+<div>
+<div class="chart-title" style="margin-bottom:8px">Top 10 autos POST (W7+W8 · 28 abr-7 may)</div>
+<table>
+<tr><th style="text-align:right">Spend</th><th>Auto</th></tr>
+<tr><td style="text-align:right" class="highlight">$210</td><td class="highlight">Subaru Outback 2.5I AWD CVT XV</td></tr>
+<tr><td style="text-align:right" class="highlight">$166</td><td class="highlight">Dfsk DF 212 2.8D SC PLUS</td></tr>
+<tr><td style="text-align:right">$111</td><td>Suzuki Celerio 1.0 GLX</td></tr>
+<tr><td style="text-align:right" class="highlight">$110</td><td class="highlight">Zx Auto Grandlion 2.3T DIESEL 4WD</td></tr>
+<tr><td style="text-align:right">$79</td><td>Suzuki GrandNomade 2.4 GLX SPORT AUTO</td></tr>
+<tr><td style="text-align:right" class="highlight">$77</td><td class="highlight">Peugeot Partner 1.6 HDI 90HP L1</td></tr>
+<tr><td style="text-align:right">$72</td><td>Chevrolet Captiva 2.4 LS</td></tr>
+<tr><td style="text-align:right">$50</td><td>Suzuki Alto 0.8 800 GLX AC</td></tr>
+<tr><td style="text-align:right" class="highlight">$47</td><td class="highlight">Peugeot Traveller 2.0 BLUEHDI 150</td></tr>
+<tr><td style="text-align:right">$46</td><td>Nissan Versa 1.6 SENSE</td></tr>
+</table>
+</div>
+</div>
+
+<p style="margin-top:12px"><strong>Cambio de perfil observable:</strong> el mix POST tiene mayor presencia de <strong>camionetas comerciales diésel</strong> (Dfsk DF 212, Zx Auto Grandlion, Peugeot Partner, Peugeot Traveller) y <strong>autos premium / de nicho</strong> (Subaru Outback AWD). El mix PRE estaba dominado por autos populares de gama baja (Suzuki Alto, Hyundai Getz, Kia Morning, Ford EcoSport) — el target tradicional de Kavak Chile.</p>
+
+<h3>Evidencia 2: QL→Booking viene cayendo desde febrero</h3>
+<p>Al mismo tiempo que cambió el mix de autos, la tasa QL→Booking (lead que efectivamente agenda visita) viene cayendo de manera gradual y sostenida en todos los canales:</p>
 
 <div class="grid-3">
-<div class="kpi-card"><div class="label">QL→Booking — sem 17/2</div><div class="value">44.2%</div><div class="delta">baseline histórico</div></div>
+<div class="kpi-card"><div class="label">QL→Booking — sem 17/2</div><div class="value">44.2%</div><div class="delta">baseline</div></div>
 <div class="kpi-card"><div class="label">QL→Booking — sem 14/4</div><div class="value">18.8%</div><div class="delta neg">-58% en 8 sem</div></div>
-<div class="kpi-card"><div class="label">QL→Booking — sem 5/5</div><div class="value">22.3%</div><div class="delta neg">no recupera</div></div>
+<div class="kpi-card"><div class="label">QL→Booking — sem 5/5</div><div class="value">22.3%</div><div class="delta neg">sigue bajo</div></div>
 </div>
 
 <div class="chart-wrap">
-<div class="chart-title">QL→Booking Sales semanal — caída gradual desde febrero</div>
+<div class="chart-title">QL→Booking Sales semanal — caída gradual desde febrero (todos los canales)</div>
 <canvas id="qlBooking"></canvas>
 </div>
 
-<h3>Cómo se confirma que es catálogo y no Meta</h3>
+<h3>Lectura: las dos evidencias se conectan</h3>
 <ul>
-<li><strong>Es gradual, no abrupto:</strong> baja semana a semana de 44% (feb) a 17% (abr). No es un step change.</li>
-<li><strong>Se ve en todos los canales:</strong> afecta tanto Meta como Search/PMax/DG. Si fuera audiencia de Meta, no afectaría a los otros canales.</li>
-<li><strong>Cae downstream del QL:</strong> la gente sigue calificando como lead/QL al mismo ritmo, pero ya no avanza a booking. El paso de "evaluación de la oferta" es donde se rompe.</li>
+<li><strong>El cambio es gradual, no abrupto:</strong> de 44% (feb) a 17-22% (may), semana a semana. No es un step change como en Problema 1.</li>
+<li><strong>Se ve en todos los canales:</strong> Meta, Search, PMax y DG — todos comparten el mismo product feed, así que el cambio les afecta por igual. Si fuera específico de la audiencia de Meta, los otros canales no caerían.</li>
+<li><strong>Cae downstream del QL:</strong> el lead califica al mismo ritmo, pero ya no avanza a booking. El paso de "evaluación de la oferta concreta" es donde se rompe.</li>
+<li><strong>Coincide con el cambio del mix:</strong> los autos top mostrados pasaron de gama baja popular a camionetas comerciales / premium. Esos perfiles convierten distinto a booking en la audiencia de Kavak.</li>
 </ul>
 </div>
 
@@ -178,39 +216,6 @@ Recent (May 2026):
   100 leads = ~3.6 bookings   <span style="color:#DC2626">(-50%)</span>
 </div>
 <p>La eficiencia Lead→Booking se cortó casi a la mitad. Aunque Meta se resuelva y volvamos al volumen de QLs de antes, cada QL ya no convierte como antes a booking — el catálogo pone un techo.</p>
-</div>
-
-<!-- Acciones -->
-<div class="section">
-<h2><span class="num">5</span> Acciones recomendadas</h2>
-
-<div class="action-card">
-<div class="title">Inmediato (esta semana) — Resolver Meta</div>
-<ul>
-<li><strong>Pausar o reducir drásticamente el ad set <code>asc_generic_donate</code></strong> — está sangrando $700-1,200/día con CPL 2-4x peor que los lead-optimized.</li>
-<li><strong>Monitorear ad set <code>vip_rmkt_QL2</code></strong> que está en learning con $20/día. Si convierte bien post-learning (necesita 50 conv para salir), migrar parte del spend.</li>
-<li><strong>Esperar 3-5 días</strong> y validar VIP→Lead Meta. Target: volver a 11-14%.</li>
-</ul>
-</div>
-
-<div class="action-card" style="border-left-color:#9D174D;background:#FDF2F8">
-<div class="title" style="color:#9D174D">Mediano plazo — Catálogo (equipo Supply)</div>
-<ul>
-<li><strong>Investigar:</strong> ¿qué cars compraron desde abril que no se están vendiendo (días en stock altos)?</li>
-<li><strong>Composición:</strong> ¿cambió el mix de marca/precio/segmento del inventory nuevo entrante?</li>
-<li><strong>Sell-through rate</strong>: validar si también cayó en abril (debería)</li>
-<li><strong>Sin esto, hay un techo en la performance de Sales</strong> que ningún cambio de paid media puede mover.</li>
-</ul>
-</div>
-
-<div class="action-card" style="border-left-color:#10B981;background:#F0FDF4">
-<div class="title" style="color:#065F46">Validación y aprendizaje</div>
-<ul>
-<li><strong>Watchlist diaria:</strong> VIP→Lead Meta + CTR del donate (los dos son leading indicators tempranos de problemas de audiencia)</li>
-<li><strong>Watchlist semanal:</strong> QL→Booking (leading indicator del catálogo)</li>
-<li><strong>Aprendizaje sobre la restructura:</strong> documentar el patrón "campañas grandes spend en ad sets upper-funnel" para evitar repetirlo. Idealmente cualquier ad set nuevo entra en una campaña aislada hasta que prueba ser lead-quality positivo.</li>
-</ul>
-</div>
 </div>
 
 <footer>
