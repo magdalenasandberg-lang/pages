@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Diagnóstico Caída de QLs — Sales Chile</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F4F6FA;color:#1A2233;line-height:1.55;padding:24px}
+.container{max-width:1200px;margin:0 auto}
+header{background:linear-gradient(135deg,#0467FC,#024CC4);color:white;padding:36px 40px;border-radius:14px;margin-bottom:24px}
+header h1{font-size:28px;margin-bottom:8px}
+header .sub{opacity:.9;font-size:14px}
+header .date{margin-top:14px;font-size:12px;opacity:.7}
+.section{background:white;border-radius:12px;padding:28px 32px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.section h2{color:#0467FC;font-size:20px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.section h2 .num{background:#0467FC;color:white;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.section h3{font-size:15px;margin:16px 0 8px;color:#374151;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.section p{margin-bottom:10px;font-size:14px}
+.section ul{margin:8px 0 12px 18px}
+.section ul li{margin-bottom:6px;font-size:14px}
+.tldr{background:#FFF8E1;border-left:4px solid #FF9F43;padding:14px 18px;border-radius:6px;margin:14px 0}
+.tldr-title{font-weight:600;color:#B7791F;font-size:13px;text-transform:uppercase;margin-bottom:4px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:14px 0}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:14px 0}
+.kpi-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:14px 16px}
+.kpi-card .label{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-card .value{font-size:22px;font-weight:700;color:#0467FC}
+.kpi-card .delta{font-size:12px;margin-top:4px}
+.kpi-card .delta.neg{color:#DC2626}
+.kpi-card .delta.pos{color:#16A34A}
+.chart-wrap{margin:14px 0;padding:12px;background:#FAFBFC;border-radius:8px;border:1px solid #E5E7EB}
+.chart-wrap canvas{max-height:300px}
+.chart-title{font-size:13px;color:#374151;margin-bottom:6px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{background:#F1F5F9;text-align:left;padding:8px 10px;font-weight:600;color:#374151;border-bottom:1px solid #E2E8F0}
+td{padding:7px 10px;border-bottom:1px solid #F1F5F9}
+tr:last-child td{border-bottom:none}
+.highlight{background:#FEF3C7}
+.signal{background:#FEE2E2;color:#991B1B;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.signal.ok{background:#D1FAE5;color:#065F46}
+.signal.warn{background:#FEF3C7;color:#92400E}
+.action-card{background:#EFF6FF;border-left:4px solid #0467FC;padding:14px 18px;border-radius:6px;margin:10px 0}
+.action-card .title{font-weight:600;color:#0467FC;margin-bottom:6px;font-size:14px}
+.compound{background:#FEF2F2;border:1px solid #FECACA;padding:16px;border-radius:8px;margin:14px 0;font-family:'SF Mono','Monaco',monospace;font-size:12px;line-height:1.7;color:#7F1D1D}
+footer{text-align:center;color:#94A3B8;font-size:12px;padding:20px;margin-top:20px}
+.problem-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.problem-tag.meta{background:#DBEAFE;color:#1E40AF}
+.problem-tag.catalog{background:#FCE7F3;color:#9D174D}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+<h1>Diagnóstico — Caída de QLs Sales Chile</h1>
+<div class="sub">Análisis del problem solving · Desde abril 2026 hasta lunes 11/05</div>
+<div class="date">Reporte: 12/05/2026 · Magui Sandberg · Growth Marketing</div>
+</header>
+
+<!-- TL;DR -->
+<div class="section">
+<h2><span class="num">★</span> Resumen Ejecutivo</h2>
+<p>Venimos viendo una caída sostenida de QLs y aumento de CPQL en Sales Chile desde fines de abril. El análisis muestra que <strong>NO es un problema único — son dos problemas independientes ocurriendo en paralelo</strong> que se compoundan:</p>
+<div class="grid-2">
+<div class="tldr" style="background:#DBEAFE;border-left-color:#1E40AF">
+<div class="tldr-title" style="color:#1E40AF">Problema 1: Restructura Meta (audiencia)</div>
+La reestructura del 4-5 de mayo introdujo un ad set <code>asc_generic_donate</code> que optimiza a <em>website donate</em> (upper funnel). Meta empezó a destinarle 75% del spend de Meta Sales, trayendo VIPs upper-funnel que no convierten a Lead. <strong>VIP→Lead colapsó de 13.8% a 7.6% en 1 semana.</strong>
+</div>
+<div class="tldr" style="background:#FCE7F3;border-left-color:#9D174D">
+<div class="tldr-title" style="color:#9D174D">Problema 2: Catálogo degradándose (oferta)</div>
+Desde febrero el catálogo se viene deteriorando: los leads se generan pero no agendan visita. <strong>QL→Booking cayó de 44.2% (feb) a 14-22% (mayo)</strong> — una caída del 50-60% en 3 meses. Visible en todos los canales, no solo Meta.
+</div>
+</div>
+<p style="margin-top:14px"><strong>Efecto neto:</strong> Cada QL ganado vale menos en términos de booking + recibimos menos QLs por dólar gastado. La eficiencia Lead→Booking se cortó a la mitad por el compound.</p>
+</div>
+
+<!-- Síntomas observados -->
+<div class="section">
+<h2><span class="num">1</span> Síntomas observados</h2>
+<p>El detonante visible fue el rendimiento del domingo 10/5 (Día de la Madre) y la falta de recuperación el lunes 11/5:</p>
+<div class="grid-3">
+<div class="kpi-card"><div class="label">QLs Sales — Sáb 9/5</div><div class="value">119</div><div class="delta">baseline</div></div>
+<div class="kpi-card"><div class="label">QLs Sales — Dom 10/5</div><div class="value">76</div><div class="delta neg">-36% DoD</div></div>
+<div class="kpi-card"><div class="label">QLs Sales — Lun 11/5</div><div class="value">81</div><div class="delta neg">-18% vs lun anterior</div></div>
+</div>
+<div class="chart-wrap">
+<div class="chart-title">QLs diarios Sales — últimas 2 semanas (línea = promedio semana 27/4)</div>
+<canvas id="qlsDaily"></canvas>
+</div>
+<p style="margin-top:10px"><strong>Pregunta:</strong> ¿Por qué bajaron los QLs y por qué no se recupera?</p>
+</div>
+
+<!-- Investigación Problema 1 -->
+<div class="section">
+<h2><span class="num">2</span> Problema 1 — Restructura Meta <span class="problem-tag meta">Audiencia</span></h2>
+
+<h3>Contexto del cambio (4-5 mayo)</h3>
+<p>El 4-5 de mayo se reestructuraron las campañas Meta Sales:</p>
+<ul>
+<li>A las campañas <code>asc_general</code> y <code>asc_rmkt</code> se les agregaron nuevos ad sets</li>
+<li>A la campaña VIP se le sacaron todos los ads dejando solo videos de Mila + 2 ads</li>
+<li>Resultado: las campañas grandes empezaron a gastar en ad sets optimizados a <em>donate/VIP</em></li>
+</ul>
+
+<h3>Lo que pasó: el ad set <code>asc_generic_donate</code> tomó el control</h3>
+<p>Este ad set (optimizado a <em>website donate</em>) pasó de ~35% del spend de Meta Sales a 76% en 3 semanas:</p>
+
+<div class="chart-wrap">
+<div class="chart-title">Spend diario: DONATE adset vs OTHER (28/4 — 11/5)</div>
+<canvas id="donateSpend"></canvas>
+</div>
+
+<h3>Las 3 huellas de la audiencia rota</h3>
+<div class="grid-3">
+<div class="kpi-card"><div class="label">VIP→Lead Meta semana 21/4</div><div class="value">13.8%</div><div class="delta">peak pre-cambio</div></div>
+<div class="kpi-card"><div class="label">VIP→Lead Meta semana 28/4</div><div class="value">7.6%</div><div class="delta neg">colapsó -45%</div></div>
+<div class="kpi-card"><div class="label">Reach DONATE 4w</div><div class="value">5x</div><div class="delta neg">audiencia saturada</div></div>
+</div>
+
+<div class="chart-wrap">
+<div class="chart-title">VIP→Lead Meta: step change abrupto en la semana del 28/4</div>
+<canvas id="metaVipLead"></canvas>
+</div>
+
+<h3>Cómo se confirma que es Meta y no otra cosa</h3>
+<ul>
+<li><strong>Step change exclusivo de Meta:</strong> caída de 13.8% a 7.6% en 1 semana. Otros canales mantuvieron sus tasas.</li>
+<li><strong>Correlación 1:1 con el ramp-up del donate:</strong> el día (30/4) que donate superó a los lead-optimized en gasto, VIP→Lead se desplomó.</li>
+<li><strong>CTR del donate cayó de 10% a 6.5%:</strong> evidencia de saturación de audiencia (reach 5x mientras CTR -35%).</li>
+<li><strong>El mix de catálogo Meta rotó:</strong> solo 23% overlap entre top productos pre vs post — el donate elige cars "clickbait" (camionetas comerciales, premium fuera de mercado).</li>
+</ul>
+</div>
+
+<!-- Investigación Problema 2 -->
+<div class="section">
+<h2><span class="num">3</span> Problema 2 — Catálogo degradándose <span class="problem-tag catalog">Oferta</span></h2>
+
+<h3>La hipótesis del equipo Supply</h3>
+<p>El equipo de Kavak viene observando que la calidad del catálogo está empeorando: la rotación de autos nuevos comprados (entrantes al stock) trae cars menos atractivos para los compradores históricos.</p>
+
+<h3>Cómo se confirma en los datos del funnel</h3>
+<p>Si el catálogo está empeorando, el síntoma debería aparecer <strong>río abajo del QL</strong>: la gente filtra opciones, califica como lead/QL, pero después de mirar la oferta NO agenda visita. Eso es exactamente lo que muestran los datos:</p>
+
+<div class="grid-3">
+<div class="kpi-card"><div class="label">QL→Booking — sem 17/2</div><div class="value">44.2%</div><div class="delta">baseline histórico</div></div>
+<div class="kpi-card"><div class="label">QL→Booking — sem 14/4</div><div class="value">18.8%</div><div class="delta neg">-58% en 8 sem</div></div>
+<div class="kpi-card"><div class="label">QL→Booking — sem 5/5</div><div class="value">22.3%</div><div class="delta neg">no recupera</div></div>
+</div>
+
+<div class="chart-wrap">
+<div class="chart-title">QL→Booking Sales semanal — caída gradual desde febrero</div>
+<canvas id="qlBooking"></canvas>
+</div>
+
+<h3>Cómo se confirma que es catálogo y no Meta</h3>
+<ul>
+<li><strong>Es gradual, no abrupto:</strong> baja semana a semana de 44% (feb) a 17% (abr). No es un step change.</li>
+<li><strong>Se ve en todos los canales:</strong> afecta tanto Meta como Search/PMax/DG. Si fuera audiencia de Meta, no afectaría a los otros canales.</li>
+<li><strong>Cae downstream del QL:</strong> la gente sigue calificando como lead/QL al mismo ritmo, pero ya no avanza a booking. El paso de "evaluación de la oferta" es donde se rompe.</li>
+</ul>
+</div>
+
+<!-- Compound -->
+<div class="section">
+<h2><span class="num">4</span> El efecto compound</h2>
+<p>Los dos problemas son independientes pero se multiplican:</p>
+<div class="compound">
+Histórico (Feb 2026):
+  Leads × VIP→Lead × QL→Book × Lead→Book
+  → ~16% × ~44% = <strong>7% Lead→Book</strong>
+  100 leads = ~7 bookings
+
+Recent (May 2026):
+  Leads × VIP→Lead × QL→Book × Lead→Book
+  → ~20% × ~18% = <strong>3.6% Lead→Book</strong>
+  100 leads = ~3.6 bookings   <span style="color:#DC2626">(-50%)</span>
+</div>
+<p>La eficiencia Lead→Booking se cortó casi a la mitad. Aunque Meta se resuelva y volvamos al volumen de QLs de antes, cada QL ya no convierte como antes a booking — el catálogo pone un techo.</p>
+</div>
+
+<!-- Acciones -->
+<div class="section">
+<h2><span class="num">5</span> Acciones recomendadas</h2>
+
+<div class="action-card">
+<div class="title">Inmediato (esta semana) — Resolver Meta</div>
+<ul>
+<li><strong>Pausar o reducir drásticamente el ad set <code>asc_generic_donate</code></strong> — está sangrando $700-1,200/día con CPL 2-4x peor que los lead-optimized.</li>
+<li><strong>Monitorear ad set <code>vip_rmkt_QL2</code></strong> que está en learning con $20/día. Si convierte bien post-learning (necesita 50 conv para salir), migrar parte del spend.</li>
+<li><strong>Esperar 3-5 días</strong> y validar VIP→Lead Meta. Target: volver a 11-14%.</li>
+</ul>
+</div>
+
+<div class="action-card" style="border-left-color:#9D174D;background:#FDF2F8">
+<div class="title" style="color:#9D174D">Mediano plazo — Catálogo (equipo Supply)</div>
+<ul>
+<li><strong>Investigar:</strong> ¿qué cars compraron desde abril que no se están vendiendo (días en stock altos)?</li>
+<li><strong>Composición:</strong> ¿cambió el mix de marca/precio/segmento del inventory nuevo entrante?</li>
+<li><strong>Sell-through rate</strong>: validar si también cayó en abril (debería)</li>
+<li><strong>Sin esto, hay un techo en la performance de Sales</strong> que ningún cambio de paid media puede mover.</li>
+</ul>
+</div>
+
+<div class="action-card" style="border-left-color:#10B981;background:#F0FDF4">
+<div class="title" style="color:#065F46">Validación y aprendizaje</div>
+<ul>
+<li><strong>Watchlist diaria:</strong> VIP→Lead Meta + CTR del donate (los dos son leading indicators tempranos de problemas de audiencia)</li>
+<li><strong>Watchlist semanal:</strong> QL→Booking (leading indicator del catálogo)</li>
+<li><strong>Aprendizaje sobre la restructura:</strong> documentar el patrón "campañas grandes spend en ad sets upper-funnel" para evitar repetirlo. Idealmente cualquier ad set nuevo entra en una campaña aislada hasta que prueba ser lead-quality positivo.</li>
+</ul>
+</div>
+</div>
+
+<footer>
+Análisis basado en datos Meta Ads API, Amplitude (Cart Leads + booking_made, uniques, Chile cpc) y Google Ads Campaigns Daily. Periodo: 17/02/2026 — 11/05/2026.
+</footer>
+
+</div>
+
+<script>
+const C={blue:'#0467FC',pink:'#9D174D',green:'#16A34A',red:'#DC2626',gray:'#94A3B8',amber:'#F59E0B'};
+
+// QLs Daily
+new Chart(document.getElementById('qlsDaily'),{
+  type:'bar',
+  data:{labels:['28/4 M','29/4 T','30/4 M','1/5 V','2/5 S','3/5 D','4/5 L','5/5 M','6/5 X','7/5 J','8/5 V','9/5 S','10/5 D','11/5 L'],
+    datasets:[{label:'QLs Sales',data:[104,117,132,107,127,114,99,115,117,151,123,119,76,81],backgroundColor:(ctx)=>{const d=ctx.parsed?.y;return d<=85?C.red:C.blue},borderRadius:4}]},
+  options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:(c)=>{const lbl=c.label;if(lbl==='10/5 D')return'Día de la Madre Chile';if(lbl==='11/5 L')return'Post-feriado, no recupera';return null}}}},scales:{y:{beginAtZero:true,title:{display:true,text:'QLs'}}}}
+});
+
+// Donate vs Other Spend Daily
+new Chart(document.getElementById('donateSpend'),{
+  type:'line',
+  data:{labels:['28/4','29/4','30/4','1/5','2/5','3/5','4/5','5/5','6/5','7/5','8/5','9/5','10/5','11/5'],
+    datasets:[
+    {label:'DONATE adset',data:[307,362,777,622,634,898,1028,945,1250,1104,922,485,645,949],borderColor:C.red,backgroundColor:'rgba(220,38,38,.1)',fill:true,tension:.3},
+    {label:'OTHER adsets',data:[891,921,720,350,296,339,282,320,380,272,242,211,281,264],borderColor:C.blue,backgroundColor:'rgba(4,103,252,.05)',fill:true,tension:.3}
+  ]},
+  options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:(c)=>c.dataset.label+': $'+c.parsed.y}}},scales:{y:{beginAtZero:true,title:{display:true,text:'Spend USD/día'}}}}
+});
+
+// Meta VIP→Lead
+new Chart(document.getElementById('metaVipLead'),{
+  type:'line',
+  data:{labels:['17/2','24/2','3/3','10/3','17/3','24/3','31/3','7/4','14/4','21/4','28/4','5/5'],
+    datasets:[
+    {label:'Meta',data:[8.5,7.6,12.1,10.5,12.2,10.3,11.1,10.1,11.6,13.8,7.6,8.8],borderColor:C.blue,backgroundColor:'rgba(4,103,252,.1)',fill:true,tension:.3,pointRadius:4},
+    {label:'Non-Meta (Search+PMax+DG)',data:[16.5,16.9,15.2,18.3,17.9,18.2,17.4,16.5,16.6,16.1,23.6,11.9],borderColor:C.gray,backgroundColor:'rgba(148,163,184,.05)',fill:false,tension:.3,pointRadius:3,borderDash:[5,5]}
+  ]},
+  options:{responsive:true,plugins:{legend:{position:'top'},annotation:{},tooltip:{callbacks:{label:(c)=>c.dataset.label+': '+c.parsed.y+'%'}}},scales:{y:{beginAtZero:true,title:{display:true,text:'VIP→Lead %'},suggestedMax:25}}}
+});
+
+// QL→Booking
+new Chart(document.getElementById('qlBooking'),{
+  type:'line',
+  data:{labels:['17/2','24/2','3/3','10/3','17/3','24/3','31/3','7/4','14/4','21/4','28/4','5/5'],
+    datasets:[{label:'QL→Booking %',data:[44.2,36.6,31.5,28.9,25.0,26.4,26.6,21.6,18.8,17.0,14.5,22.3],borderColor:C.pink,backgroundColor:'rgba(157,23,109,.1)',fill:true,tension:.3,pointRadius:5}]},
+  options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>c.parsed.y+'%'}}},scales:{y:{beginAtZero:true,title:{display:true,text:'QL→Booking %'},suggestedMax:50}}}
+});
+</script>
+</body>
+</html>
